@@ -22,17 +22,18 @@
  ***************************************************************************/
 """
 import json
-
 import requests
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
 from qgis.utils import iface
+from qgis.core import QgsProject, QgsVectorLayer
 
 # Initialize Qt resources from file resources.py
-from .resources import *
+# from .resources import *
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
+# from .jumelles_ui import Ui_JumellesDialogBase
 import os.path
 import geopandas as gpd
 
@@ -48,6 +49,8 @@ class Jumelles:
             application at run time.
         :type iface: QgsInterface
         """
+        self.ui = JumellesDialog()
+        # self.ui.pushButton_rechercher.clicked.connect(self.run)
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -71,8 +74,6 @@ class Jumelles:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
-
-        self.ui = JumellesDialog()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -186,7 +187,6 @@ class Jumelles:
 
     def run(self):
         """Run method that performs all the real work"""
-
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start:
@@ -196,86 +196,76 @@ class Jumelles:
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
-        self.ui.pushButton_rechercher = self.dlg.exec_()
+
         # See if OK was pressed
-        if self.ui.pushButton_rechercher:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            dataOffres = gpd.read_file('/home/antoine/Desktop/offres.gpkg')
-            inputOffre = self.ui.lineEdit_offre.text()
+        # Do something useful here - delete the line containing pass and
+        # substitute with your code.
+        if self.ui.pushButton_rechercher.clicked.connect(self.parcelles_communes):
+            self.parcelles_communes()
+            self.dlg.exec_()
+        elif self.ui.pushButoon_rechercher.clicked.connect(self.offres):
+            self.offres()
+            self.dlg.exec_()
+        elif self.ui.pushButton_rechercher.clicked.connect(self.dossiers):
+            self.dossiers()
+            self.dlg.exec_()
 
-            # Donnes à partir des parcelles et communes
-            gurl = "https://vector.sitg.ge.ch/arcgis/rest/services/Hosted/CAD_PARCELLE_MENSU/FeatureServer"
-            dataParcelles = self.readDataParcelles(gurl)
+    def dossiers(self):
+        dossierLayer = iface.activeLayer()
+        featDossiers = dossierLayer.getFeatures()
+        for f in featDossiers:
+            dataDossiers = f["Mandat"]
+            inputDossier = self.ui.lineEdit_dossier.text()
+            if inputDossier != '':
+                if dataDossiers.__contains__(int(inputDossier)):
+                    return self.ui.textEdit_resultats.setText(inputDossier)
+                else:
+                    return self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
+            else:
+                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
+        self.ui.lineEdit_dossier.clear()
+
+    def offres(self):
+        dataOffres = gpd.read_file('/home/antoine/Desktop/offres.gpkg')
+        inputOffre = self.ui.lineEdit_offre.text()
+        if inputOffre != '':
+            if dataOffres['Num_offre'].__contains__(int(inputOffre)):
+                return self.ui.textEdit_resultats.setText(dataOffres['Num_offre'].get(int(inputOffre) - 1))
+            else:
+                return self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
+        self.ui.lineEdit_offre.clear()
+
+    def parcelles_communes(self):
+        parcellesLayer = iface.activeLayer()
+        featParcelles = parcellesLayer.getFeatures()
+        for f in featParcelles:
+            dataParcelles = f['no_parcelle']
             inputParcelle = self.ui.lineEdit_parcelle.text()
-
-            communesLayer = iface.activeLayer()
-            featComm = communesLayer.getFeatures
-            for f in featComm:
-                dataComm = f["COMMUNE"]
-                inputCommune = self.ui.lineEdit_commune.text()
-                if inputCommune != '':
-                    if dataComm.__contains__(int(inputCommune)):
-                        self.ui.textEdit_resultats.setText(inputCommune)
-                    else:
-                        self.ui.textEdit_resultats.setText("Erreur: la commune n'existe pas")
-                else:
-                    self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
-                    print("ERROR")
-                self.ui.lineEdit_commune.clear()
-
-            parcelles_col = dataParcelles['no_parcell']
-            parcelles_list = dataParcelles.tolist
-
-            dossierLayer = iface.activeLayer()
-            features = dossierLayer.getFeatures
-            for f in features:
-                dataDossiers = f["Mandat"]
-                inputDossier = self.ui.lineEdit_dossier.text()
-                if inputDossier != '':
-                    if dataDossiers.__contains__(int(inputDossier)):
-                        print(int(inputDossier))
-                        self.ui.textEdit_resultats.setText(inputDossier)
-                    else:
-                        self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
-                else:
-                    self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
-                    print("ERROR")
-                self.ui.lineEdit_dossier.clear()
-
             if inputParcelle != '':
-                containsValParcelles = parcelles_col.values.__contains__(int(inputParcelle))
-                if containsValParcelles:
-                    for i in range(0, len(parcelles_list)):
-                        indexParc = parcelles_list.index(int(inputParcelle))
-                        if parcelles_list[i] == int(inputParcelle):
-                            self.ui.textEdit_resultats.setText(
-                                f'{communes_list[indexParc]} - {parcelles_list[indexParc]}')
+                if dataParcelles.__contains__(int(inputParcelle)):
+                    return self.ui
                 else:
-                    self.ui.textEdit_resultats.setText("ERREUR: LA PARCELLE N'EXISTE PAS")
+                    return self.ui.textEdit_resultats.setText("Erreur: la parcelle n'existe pas")
+            else:
+                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
+        self.ui.lineEdit_commune.clear()
 
-            if inputOffre != '':
-                if dataOffres['Num_offre'].__contains__(int(inputOffre)):
-                    self.ui.textEdit_resultats.setText(dataOffres['Num_offre'].get(int(inputOffre) - 1))
+        communesLayer = iface.activeLayer()
+        featComm = communesLayer.getFeatures()
+        for f in featComm:
+            dataComm = f["COMMUNE"]
+            inputCommune = self.ui.lineEdit_commune.text()
+            if inputCommune != '':
+                if dataComm.__contains__(inputCommune):
+                    return self.ui.textEdit_resultats.setText(inputCommune)
                 else:
-                    self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
+                    return self.ui.textEdit_resultats.setText("Erreur: la commune n'existe pas")
+            else:
+                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
+        self.ui.lineEdit_commune.clear()
+        self.ui.lineEdit_parcelle.clear()
 
-            elif inputCommune != '':
-                containsValCommunes = communes_col.values.__contains__(str(inputCommune))
-                if containsValCommunes:
-                    for i in range(0, len(parcelles_list)):
-                        indexComm = communes_list.index(str(inputCommune))
-                        if communes_list[i] == str(inputCommune):
-                            self.ui.textEdit_resultats.setText(
-                                f'{communes_list[indexComm]} - {parcelles_list[indexComm]}')
-                else:
-                    self.ui.textEdit_resultats.setText("ERREUR: LA COMMUNE N'EXISTE PAS")
-
-
-
-            self.ui.lineEdit_offre.clear()
-            self.ui.lineEdit_parcelle.clear()
-
+    """
     def readDataParcelles(self, url):
         wurl = [url]
         folder = '/home/antoine/.local/share/QGIS/QGIS3/profiles/default/python/plugins/Jumelles'
@@ -331,3 +321,4 @@ class Jumelles:
                     file = gdf.to_file(f'{file_name}.shp')
                     # data = gpd.read_file(f'{folder}/{file_name}.shp')
                     return file
+    """
