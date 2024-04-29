@@ -23,13 +23,37 @@
 """
 import os
 
-from qgis.PyQt import uic
+from PyQt5 import Qt, QtCore
+from PyQt5.QtCore import QEvent
+from PyQt5.QtWidgets import QMenu
+from qgis.PyQt import uic, QtGui
 from qgis.PyQt import QtWidgets
+from qgis.PyQt.QtWidgets import QAction
+from .jumelles import JumellesDialog
+from .jumelles_ui import Ui_JumellesDialogBase
+from qgis.PyQt.QtCore import *
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'jumelles_dialog_base.ui'))
 
+class OpenRecordAction(QAction):
+    def __init__(self, iface=None, parent=None, results=[]):
+        super().__init__("Open Record Form", parent)
+        self.iface = iface
+        self.results = results
+        self.triggered.connect(self.open_record)
+
+    def open_record(self):
+
+        selectedItems = self.parentWidget().selectedItems()
+        # print(len(selectedItems))
+        selectedRow = selectedItems[0].row()
+        foundid = self.parentWidget().item(selectedRow, 0).data(Qt.UserRole)
+        selectedLayer = self.results[foundid][0]
+        selectedFeature = self.results[foundid][1]
+        self.iface.openFeatureForm(selectedLayer, selectedFeature, True)
+        self.iface.setActiveLayer(selectedLayer)
 
 class JumellesDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -41,3 +65,153 @@ class JumellesDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+    def setupUi(self, JumellesDialogBase):
+        JumellesDialogBase.setObjectName("JumellesDialogBase")
+        JumellesDialogBase.resize(654, 725)
+        self.groupBox_action = QtWidgets.QGroupBox(JumellesDialogBase)
+        self.groupBox_action.setGeometry(QtCore.QRect(341, 1, 311, 541))
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.groupBox_action.setFont(font)
+        self.groupBox_action.setObjectName("groupBox_action")
+        self.pushButton_rechercher = QtWidgets.QPushButton(self.groupBox_action)
+        self.pushButton_rechercher.setGeometry(QtCore.QRect(28, 60, 251, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.pushButton_rechercher.setFont(font)
+        self.pushButton_rechercher.setObjectName("pushButton_rechercher")
+        self.pushButton_arreter = QtWidgets.QPushButton(self.groupBox_action)
+        self.pushButton_arreter.setGeometry(QtCore.QRect(30, 140, 251, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.pushButton_arreter.setFont(font)
+        self.pushButton_arreter.setObjectName("pushButton_arreter")
+        self.pushButton_nouvelleRecherche = QtWidgets.QPushButton(self.groupBox_action)
+        self.pushButton_nouvelleRecherche.setGeometry(QtCore.QRect(30, 220, 251, 51))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.pushButton_nouvelleRecherche.setFont(font)
+        self.pushButton_nouvelleRecherche.setObjectName("pushButton_nouvelleRecherche")
+        self.pushButton_annuler = QtWidgets.QPushButton(self.groupBox_action)
+        self.pushButton_annuler.setGeometry(QtCore.QRect(30, 440, 251, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.pushButton_annuler.setFont(font)
+        self.pushButton_annuler.setObjectName("pushButton_annuler")
+        self.groupBox_resultats = QtWidgets.QGroupBox(JumellesDialogBase)
+        self.groupBox_resultats.setGeometry(QtCore.QRect(1, 551, 651, 171))
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.groupBox_resultats.setFont(font)
+        self.groupBox_resultats.setObjectName("groupBox_resultats")
+        self.textEdit_resultats = QtWidgets.QTextEdit(self.groupBox_resultats)
+        self.textEdit_resultats.setGeometry(QtCore.QRect(0, 20, 651, 151))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.textEdit_resultats.setFont(font)
+        self.textEdit_resultats.setObjectName("textEdit_resultats")
+        self.groupBox_Recherche = QtWidgets.QGroupBox(JumellesDialogBase)
+        self.groupBox_Recherche.setGeometry(QtCore.QRect(0, 0, 331, 541))
+        font = QtGui.QFont()
+        font.setBold(True)
+        self.groupBox_Recherche.setFont(font)
+        self.groupBox_Recherche.setObjectName("groupBox_Recherche")
+        self.label_offre = QtWidgets.QLabel(self.groupBox_Recherche)
+        self.label_offre.setGeometry(QtCore.QRect(20, 60, 41, 17))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.label_offre.setFont(font)
+        self.label_offre.setObjectName("label_offre")
+        self.lineEdit_offre = QtWidgets.QLineEdit(self.groupBox_Recherche)
+        self.lineEdit_offre.setGeometry(QtCore.QRect(110, 60, 201, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.lineEdit_offre.setFont(font)
+        self.lineEdit_offre.setObjectName("lineEdit_offre")
+        self.label_dossier = QtWidgets.QLabel(self.groupBox_Recherche)
+        self.label_dossier.setGeometry(QtCore.QRect(20, 140, 51, 17))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.label_dossier.setFont(font)
+        self.label_dossier.setObjectName("label_dossier")
+        self.label_adresse = QtWidgets.QLabel(self.groupBox_Recherche)
+        self.label_adresse.setGeometry(QtCore.QRect(20, 220, 61, 17))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.label_adresse.setFont(font)
+        self.label_adresse.setObjectName("label_adresse")
+        self.label_parcelle = QtWidgets.QLabel(self.groupBox_Recherche)
+        self.label_parcelle.setGeometry(QtCore.QRect(20, 360, 61, 17))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.label_parcelle.setFont(font)
+        self.label_parcelle.setObjectName("label_parcelle")
+        self.label_commune = QtWidgets.QLabel(self.groupBox_Recherche)
+        self.label_commune.setGeometry(QtCore.QRect(20, 440, 71, 17))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.label_commune.setFont(font)
+        self.label_commune.setObjectName("label_commune")
+        self.lineEdit_dossier = QtWidgets.QLineEdit(self.groupBox_Recherche)
+        self.lineEdit_dossier.setGeometry(QtCore.QRect(110, 140, 201, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.lineEdit_dossier.setFont(font)
+        self.lineEdit_dossier.setObjectName("lineEdit_dossier")
+        self.lineEdit_adresse = QtWidgets.QLineEdit(self.groupBox_Recherche)
+        self.lineEdit_adresse.setGeometry(QtCore.QRect(110, 220, 201, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.lineEdit_adresse.setFont(font)
+        self.lineEdit_adresse.setObjectName("lineEdit_adresse")
+        self.lineEdit_parcelle = QtWidgets.QLineEdit(self.groupBox_Recherche)
+        self.lineEdit_parcelle.setGeometry(QtCore.QRect(110, 360, 201, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.lineEdit_parcelle.setFont(font)
+        self.lineEdit_parcelle.setObjectName("lineEdit_parcelle")
+        self.lineEdit_commune = QtWidgets.QLineEdit(self.groupBox_Recherche)
+        self.lineEdit_commune.setGeometry(QtCore.QRect(110, 440, 201, 25))
+        font = QtGui.QFont()
+        font.setBold(False)
+        self.lineEdit_commune.setFont(font)
+        self.lineEdit_commune.setObjectName("lineEdit_commune")
+
+        self.retranslateUi(JumellesDialogBase)
+        QtCore.QMetaObject.connectSlotsByName(JumellesDialogBase)
+
+    def show_context_menu(self, pos):
+
+        context_menu = QMenu(self.resultsTable)
+
+        context_menu.addAction(
+            OpenRecordAction(
+                iface=self.iface,
+                parent=self.resultsTable,
+                results=self.results
+            )
+        )
+
+        context_menu.exec_(self.resultsTable.mapToGlobal(pos))
+
+    def closeDialog(self):
+        '''Close the dialog box when the Close button is pushed'''
+        self.hide()
+
+    def eventFilter(self, source, e):
+        if e.type() == QEvent.MouseButtonPress:
+            self.button_pressed = e.button()
+        return super().eventFilter(source, e)
+
+    def updateLayers(self):
+        '''Called when a layer has been added or deleted in QGIS.
+        It forces the dialog to reload.'''
+        # Stop any existing search
+        self.killWorker()
+        if self.isVisible() or len(self.results) != 0:
+            self.populateLayerListComboBox()
+            self.clearResults()
+            self.layers_need_updating = False
+        else:
+            self.layers_need_updating = True

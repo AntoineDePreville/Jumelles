@@ -50,7 +50,7 @@ class Jumelles:
         :type iface: QgsInterface
         """
         self.ui = JumellesDialog()
-        # self.ui.pushButton_rechercher.clicked.connect(self.run)
+        self.jumellesDialog = None
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -184,6 +184,11 @@ class Jumelles:
                 self.tr(u'&Jumelles'),
                 action)
             self.iface.removeToolBarIcon(action)
+
+    def showJumellesDialog(self):
+        if self.jumellesDialog is None:
+            self.jumellesDialog = JumellesDialog(self.iface, self.iface.mainWindow)
+        self.jumellesDialog.show()
 
     def run(self):
         """Run method that performs all the real work"""
