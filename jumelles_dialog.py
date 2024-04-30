@@ -157,5 +157,19 @@ class JumellesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.retranslateUi(JumellesDialogBase)
         QtCore.QMetaObject.connectSlotsByName(JumellesDialogBase)
 
-        self.pushButton_rechercher.clicked.connect(self.textEdit_resultats)
-
+    def retranslateUi(self, JumellesDialogBase):
+        _translate = QtCore.QCoreApplication.translate
+        JumellesDialogBase.setWindowTitle(_translate("JumellesDialogBase", "Jumelles"))
+        self.groupBox_action.setTitle(_translate("JumellesDialogBase", "Action"))
+        self.pushButton_rechercher.setText(_translate("JumellesDialogBase", "Rechercher"))
+        self.pushButton_arreter.setText(_translate("JumellesDialogBase", "Arrêter"))
+        self.pushButton_nouvelleRecherche.setText(_translate("JumellesDialogBase", "Nouvelle\n"
+                                                                                   "recherche"))
+        self.pushButton_annuler.setText(_translate("JumellesDialogBase", "Annuler"))
+        self.groupBox_resultats.setTitle(_translate("JumellesDialogBase", "Résultats"))
+        self.groupBox_Recherche.setTitle(_translate("JumellesDialogBase", "Recherche"))
+        self.label_offre.setText(_translate("JumellesDialogBase", "Offre"))
+        self.label_dossier.setText(_translate("JumellesDialogBase", "Dossier"))
+        self.label_adresse.setText(_translate("JumellesDialogBase", "Adresse"))
+        self.label_parcelle.setText(_translate("JumellesDialogBase", "Parcelle"))
+        self.label_commune.setText(_translate("JumellesDialogBase", "Commune"))

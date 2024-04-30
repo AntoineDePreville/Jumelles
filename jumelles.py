@@ -22,6 +22,8 @@
  ***************************************************************************/
 """
 import json
+import sys
+
 import requests
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -73,6 +75,10 @@ class Jumelles:
         self.first_start = None
 
         self.ui = JumellesDialog()
+        self.ui.pushButton_rechercher.clicked.connect(self.run)
+
+    def param(self):
+        self.ui.lineEdit_offre.setDisabled(False)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -192,15 +198,15 @@ class Jumelles:
             self.dlg = JumellesDialog()
 
         # show the dialog
-        self.dlg.show()
+        self.ui.show()
         # Run the dialog event loop
-        result = self.dlg.exec_()
+        result = self.ui.exec_()
         # See if OK was pressed
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
-            if self.ui.lineEdit_offre != "":
-                inputOffres = self.ui.lineEdit_offre.text()
+            inputOffres = self.ui.lineEdit_offre.text()
+            if inputOffres != "":
                 self.offres(inputOffres)
 
     def dossiers(self):
@@ -211,22 +217,22 @@ class Jumelles:
             inputDossier = self.ui.lineEdit_dossier.text()
             if inputDossier != '':
                 if dataDossiers.__contains__(int(inputDossier)):
-                    return self.ui.textEdit_resultats.setText(inputDossier)
+                    self.ui.textEdit_resultats.setText(inputDossier)
                 else:
-                    return self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
+                    self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
             else:
-                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
+                self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
         self.ui.lineEdit_dossier.clear()
 
     def offres(self, input):
         dataOffres = iface.activeLayer()
-
-        if input != '':
-            if dataOffres['Num_offre'].__contains__(int(input)):
-                return self.ui.textEdit_resultats.setText(dataOffres['Num_offre'].get(int(input) - 1))
+        for f in dataOffres.getFeatures():
+            if str(input) in f['Num_offre'].tolist().index(str(input-1)):
+                self.ui.textEdit_resultats.setText(f['Num_offre'].index(str(input-1)))
             else:
-                return self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
-        self.ui.lineEdit_offre.clear()
+                self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
+
+            self.ui.lineEdit_offre.clear()
 
     def parcelles_communes(self):
         parcellesLayer = iface.activeLayer()
