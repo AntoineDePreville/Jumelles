@@ -27,13 +27,12 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
 from qgis.utils import iface
-from qgis.core import QgsProject, QgsVectorLayer
+from qgis.core import QgsApplication, QgsProject
 
 # Initialize Qt resources from file resources.py
 # from .resources import *
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
-# from .jumelles_ui import Ui_JumellesDialogBase
 import os.path
 import geopandas as gpd
 
@@ -49,8 +48,6 @@ class Jumelles:
             application at run time.
         :type iface: QgsInterface
         """
-        self.ui = JumellesDialog()
-        self.jumellesDialog = None
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -74,6 +71,8 @@ class Jumelles:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+
+        self.ui = JumellesDialog()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -139,7 +138,6 @@ class Jumelles:
             added to self.actions list.
         :rtype: QAction
         """
-
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -185,11 +183,6 @@ class Jumelles:
                 action)
             self.iface.removeToolBarIcon(action)
 
-    def showJumellesDialog(self):
-        if self.jumellesDialog is None:
-            self.jumellesDialog = JumellesDialog(self.iface, self.iface.mainWindow)
-        self.jumellesDialog.show()
-
     def run(self):
         """Run method that performs all the real work"""
         # Create the dialog with elements (after translation) and keep reference
@@ -201,19 +194,14 @@ class Jumelles:
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
-
+        result = self.dlg.exec_()
         # See if OK was pressed
-        # Do something useful here - delete the line containing pass and
-        # substitute with your code.
-        if self.ui.pushButton_rechercher.clicked.connect(self.parcelles_communes):
-            self.parcelles_communes()
-            self.dlg.exec_()
-        elif self.ui.pushButoon_rechercher.clicked.connect(self.offres):
-            self.offres()
-            self.dlg.exec_()
-        elif self.ui.pushButton_rechercher.clicked.connect(self.dossiers):
-            self.dossiers()
-            self.dlg.exec_()
+        if result:
+            # Do something useful here - delete the line containing pass and
+            # substitute with your code.
+            if self.ui.lineEdit_offre != "":
+                inputOffres = self.ui.lineEdit_offre.text()
+                self.offres(inputOffres)
 
     def dossiers(self):
         dossierLayer = iface.activeLayer()
@@ -230,12 +218,12 @@ class Jumelles:
                 return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
         self.ui.lineEdit_dossier.clear()
 
-    def offres(self):
-        dataOffres = gpd.read_file('/home/antoine/Desktop/offres.gpkg')
-        inputOffre = self.ui.lineEdit_offre.text()
-        if inputOffre != '':
-            if dataOffres['Num_offre'].__contains__(int(inputOffre)):
-                return self.ui.textEdit_resultats.setText(dataOffres['Num_offre'].get(int(inputOffre) - 1))
+    def offres(self, input):
+        dataOffres = iface.activeLayer()
+
+        if input != '':
+            if dataOffres['Num_offre'].__contains__(int(input)):
+                return self.ui.textEdit_resultats.setText(dataOffres['Num_offre'].get(int(input) - 1))
             else:
                 return self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
         self.ui.lineEdit_offre.clear()
@@ -244,11 +232,11 @@ class Jumelles:
         parcellesLayer = iface.activeLayer()
         featParcelles = parcellesLayer.getFeatures()
         for f in featParcelles:
-            dataParcelles = f['no_parcelle']
+            dataParcelles = f["NO_PARCELLE"]
             inputParcelle = self.ui.lineEdit_parcelle.text()
             if inputParcelle != '':
                 if dataParcelles.__contains__(int(inputParcelle)):
-                    return self.ui
+                    return self.ui.textEdit_resultats.setText(inputParcelle)
                 else:
                     return self.ui.textEdit_resultats.setText("Erreur: la parcelle n'existe pas")
             else:
@@ -324,6 +312,6 @@ class Jumelles:
 
                     gdf = gpd.read_file(output_file)
                     file = gdf.to_file(f'{file_name}.shp')
-                    # data = gpd.read_file(f'{folder}/{file_name}.shp')
-                    return file
+                    data = gpd.read_file(f'{folder}/{file_name}.shp')
+                    return data
     """

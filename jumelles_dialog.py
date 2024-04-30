@@ -23,37 +23,13 @@
 """
 import os
 
-from PyQt5 import Qt, QtCore
-from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QMenu
-from qgis.PyQt import uic, QtGui
-from qgis.PyQt import QtWidgets
-from qgis.PyQt.QtWidgets import QAction
-from .jumelles import JumellesDialog
-from .jumelles_ui import Ui_JumellesDialogBase
-from qgis.PyQt.QtCore import *
+from qgis.PyQt import uic
+from qgis.PyQt import QtWidgets, QtGui, QtCore
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'jumelles_dialog_base.ui'))
 
-class OpenRecordAction(QAction):
-    def __init__(self, iface=None, parent=None, results=[]):
-        super().__init__("Open Record Form", parent)
-        self.iface = iface
-        self.results = results
-        self.triggered.connect(self.open_record)
-
-    def open_record(self):
-
-        selectedItems = self.parentWidget().selectedItems()
-        # print(len(selectedItems))
-        selectedRow = selectedItems[0].row()
-        foundid = self.parentWidget().item(selectedRow, 0).data(Qt.UserRole)
-        selectedLayer = self.results[foundid][0]
-        selectedFeature = self.results[foundid][1]
-        self.iface.openFeatureForm(selectedLayer, selectedFeature, True)
-        self.iface.setActiveLayer(selectedLayer)
 
 class JumellesDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -181,37 +157,5 @@ class JumellesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.retranslateUi(JumellesDialogBase)
         QtCore.QMetaObject.connectSlotsByName(JumellesDialogBase)
 
-    def show_context_menu(self, pos):
+        self.pushButton_rechercher.clicked.connect(self.textEdit_resultats)
 
-        context_menu = QMenu(self.resultsTable)
-
-        context_menu.addAction(
-            OpenRecordAction(
-                iface=self.iface,
-                parent=self.resultsTable,
-                results=self.results
-            )
-        )
-
-        context_menu.exec_(self.resultsTable.mapToGlobal(pos))
-
-    def closeDialog(self):
-        '''Close the dialog box when the Close button is pushed'''
-        self.hide()
-
-    def eventFilter(self, source, e):
-        if e.type() == QEvent.MouseButtonPress:
-            self.button_pressed = e.button()
-        return super().eventFilter(source, e)
-
-    def updateLayers(self):
-        '''Called when a layer has been added or deleted in QGIS.
-        It forces the dialog to reload.'''
-        # Stop any existing search
-        self.killWorker()
-        if self.isVisible() or len(self.results) != 0:
-            self.populateLayerListComboBox()
-            self.clearResults()
-            self.layers_need_updating = False
-        else:
-            self.layers_need_updating = True
