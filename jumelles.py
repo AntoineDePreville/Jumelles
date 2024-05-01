@@ -216,13 +216,14 @@ class Jumelles:
     def dossiers(self, input):
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
+
         for f in featDossiers:
-            if int(input) == f.id():
+            if f['Mandat'].__contains__(input):
                 self.ui.textEdit_resultats.setText(f['Mandat'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
-                zoom_factor = 2.0
+                zoom_factor = 10.0
                 rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
                 canvas.setExtent(rect)
                 QgsPoint(x, y)
