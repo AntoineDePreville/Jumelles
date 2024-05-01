@@ -207,23 +207,31 @@ class Jumelles:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             inputOffres = self.ui.lineEdit_offre.text()
+            inputDossiers = self.ui.lineEdit_dossier.text()
             if inputOffres != "":
                 self.offres(inputOffres)
+            elif inputDossiers !="":
+                self.dossiers(inputDossiers)
 
-    def dossiers(self):
+    def dossiers(self, input):
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
         for f in featDossiers:
-            dataDossiers = f["Mandat"]
-            inputDossier = self.ui.lineEdit_dossier.text()
-            if inputDossier != '':
-                if dataDossiers.__contains__(int(inputDossier)):
-                    self.ui.textEdit_resultats.setText(inputDossier)
-                else:
-                    self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
+            if int(input) == f.id():
+                self.ui.textEdit_resultats.setText(f['Mandat'])
+                canvas = iface.mapCanvas()
+                x = f.geometry().asPoint().x()
+                y = f.geometry().asPoint().y()
+                zoom_factor = 2.0
+                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                canvas.setExtent(rect)
+                QgsPoint(x, y)
+                canvas.refresh()
+                break
             else:
-                self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
-        self.ui.lineEdit_dossier.clear()
+                self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
+
+            self.ui.lineEdit_dossier.clear()
 
     def offres(self, input):
         df = iface.activeLayer()
