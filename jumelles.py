@@ -28,8 +28,9 @@ import requests
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
+from qgis._core import QgsPoint, QgsCoordinateReferenceSystem, QgsRectangle
+from qgis.gui import QgsMapCanvas
 from qgis.utils import iface
-from qgis.core import QgsApplication, QgsProject
 
 # Initialize Qt resources from file resources.py
 # from .resources import *
@@ -225,10 +226,20 @@ class Jumelles:
         self.ui.lineEdit_dossier.clear()
 
     def offres(self, input):
-        dataOffres = iface.activeLayer()
-        for f in dataOffres.getFeatures():
-            if str(input) in f['Num_offre'].tolist().index(str(input-1)):
-                self.ui.textEdit_resultats.setText(f['Num_offre'].index(str(input-1)))
+        df = iface.activeLayer()
+        features = df.getFeatures()
+        for f in features:
+            if int(input) == f.id():
+                self.ui.textEdit_resultats.setText(f['Num_offre'])
+                canvas = iface.mapCanvas()
+                x = f.geometry().asPoint().x()
+                y = f.geometry().asPoint().y()
+                zoom_factor = 2.0
+                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                canvas.setExtent(rect)
+                QgsPoint(x, y)
+                canvas.refresh()
+                break
             else:
                 self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
 
