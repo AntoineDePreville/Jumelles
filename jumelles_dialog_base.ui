@@ -121,7 +121,7 @@ recherche</string>
    <property name="title">
     <string>Résultats</string>
    </property>
-   <widget class="QTextEdit" name="textEdit_resultats">
+   <widget class="QListWidget" name="listWidget_resultats">
     <property name="geometry">
      <rect>
       <x>0</x>

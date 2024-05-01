@@ -208,29 +208,35 @@ class Jumelles:
             # substitute with your code.
             inputOffres = self.ui.lineEdit_offre.text()
             inputDossiers = self.ui.lineEdit_dossier.text()
+            inputParcelles = self.ui.lineEdit_parcelle.text()
+            inputCommunes = self.ui.lineEdit_commune.text()
             if inputOffres != "":
                 self.offres(inputOffres)
-            elif inputDossiers !="":
+            elif inputDossiers != "":
                 self.dossiers(inputDossiers)
+            elif inputParcelles != "":
+                self.parcelles(inputParcelles)
+            elif inputCommunes != "":
+                self.communes(inputCommunes)
+
 
     def dossiers(self, input):
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
-
         for f in featDossiers:
             if f['Mandat'].__contains__(input):
-                self.ui.textEdit_resultats.setText(f['Mandat'])
+                self.ui.listWidget_resultats.addItem(f['Mandat'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
-                zoom_factor = 10.0
+                zoom_factor = 50.0
                 rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
                 canvas.setExtent(rect)
                 QgsPoint(x, y)
                 canvas.refresh()
                 break
             else:
-                self.ui.textEdit_resultats.setText("Erreur: le dossier n'existe pas")
+                self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas")
 
             self.ui.lineEdit_dossier.clear()
 
@@ -239,7 +245,7 @@ class Jumelles:
         features = df.getFeatures()
         for f in features:
             if int(input) == f.id():
-                self.ui.textEdit_resultats.setText(f['Num_offre'])
+                self.ui.listWidget_resultats.addItem(f['Num_offre'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -250,94 +256,26 @@ class Jumelles:
                 canvas.refresh()
                 break
             else:
-                self.ui.textEdit_resultats.setText("Erreur: l'offre n'existe pas")
+                self.ui.listWidget_resultats.addItem("Erreur: l'offre n'existe pas")
 
             self.ui.lineEdit_offre.clear()
 
-    def parcelles_communes(self):
+    def parcelles(self, input):
         parcellesLayer = iface.activeLayer()
         featParcelles = parcellesLayer.getFeatures()
         for f in featParcelles:
-            dataParcelles = f["NO_PARCELLE"]
-            inputParcelle = self.ui.lineEdit_parcelle.text()
-            if inputParcelle != '':
-                if dataParcelles.__contains__(int(inputParcelle)):
-                    return self.ui.textEdit_resultats.setText(inputParcelle)
-                else:
-                    return self.ui.textEdit_resultats.setText("Erreur: la parcelle n'existe pas")
-            else:
-                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
-        self.ui.lineEdit_commune.clear()
+            if str(f['no_parcelle']).__contains__(input):
+                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
 
+
+    def communes(self, input):
         communesLayer = iface.activeLayer()
         featComm = communesLayer.getFeatures()
         for f in featComm:
-            dataComm = f["COMMUNE"]
-            inputCommune = self.ui.lineEdit_commune.text()
-            if inputCommune != '':
-                if dataComm.__contains__(inputCommune):
-                    return self.ui.textEdit_resultats.setText(inputCommune)
-                else:
-                    return self.ui.textEdit_resultats.setText("Erreur: la commune n'existe pas")
+            if f['commune'].__contains__(input):
+                self.ui.listWidget_resultats.addItem(input)
             else:
-                return self.ui.textEdit_resultats.setText("ENREGISTREZ UNE RECHERCHE SVP")
+                self.ui.listWidget_resultats.addItem("Erreur: la commune n'existe pas")
+
         self.ui.lineEdit_commune.clear()
         self.ui.lineEdit_parcelle.clear()
-
-    """
-    def readDataParcelles(self, url):
-        wurl = [url]
-        folder = '/home/antoine/.local/share/QGIS/QGIS3/profiles/default/python/plugins/Jumelles'
-
-        for i in wurl:
-            params = {'f': 'json'}
-            response = requests.post(i, params)
-            result = json.loads(response.text)
-            service_name = i.split('FeatureServer')[0].split('/')[-2]
-
-            for j in result['layers']:
-                file_name = j['name'].lower().replace(' ', '_').replace('-', '').replace('__', '_')
-                id = j['id']
-                layer_url = f'{i}/{id}'
-                query_url = f'{layer_url}/query'
-                params = {"f": 'json'}
-                response = requests.post(layer_url, params)
-                result = json.loads(response.text)
-                id_field = result['objectIdField']
-                params = {"f": 'json', "returnCountOnly": 'true', "where": '1=1'}
-                response = requests.post(query_url, params)
-                result = json.loads(response.text)
-                records = result['count']
-                # print(f'{j["name"]} ({j["id"]}) - ({records} records)')
-                rec_dl = 0
-                object_id = -1
-                geojson = {"type": "FeatureCollection", "features": []}
-
-                while rec_dl < records:
-                    params = {"f": 'geojson', "outFields": '*', "outSR": 2056, "returnGeometry": 'true',
-                              "where": f'{id_field} > {object_id}'}
-                    response = requests.get(query_url, params)
-                    result = json.loads(response.text)
-
-                    if len(result['features']):
-                        geojson['features'] += result['features']
-                        rec_dl += len(result['features'])
-                        object_id = result['features'][len(result['features']) - 1]['properties'][id_field]
-                    else:
-                        print("NO")
-                        break
-
-                    # if rec_dl != records:
-                    # print(
-                    # f'--- ### Note, the record count for the feature layer ({j["name"]}) is incorrect - this is a bug in the service itself ### ---')
-                    # print('-' * 50)
-
-                    output_file = os.path.join(folder, f'{file_name}.geojson')
-                    with open(output_file, 'w') as f:
-                        f.write(json.dumps(geojson, indent=2))
-
-                    gdf = gpd.read_file(output_file)
-                    file = gdf.to_file(f'{file_name}.shp')
-                    data = gpd.read_file(f'{folder}/{file_name}.shp')
-                    return data
-    """
