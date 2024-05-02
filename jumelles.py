@@ -222,7 +222,7 @@ class Jumelles:
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
         for f in featDossiers:
-            if input == f['Mandat']:
+            if str(f['Mandat']) == input:
                 self.ui.listWidget_resultats.addItem(f['Mandat'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
@@ -260,10 +260,9 @@ class Jumelles:
         for f in featParcelles:
             if str(f['no_parcelle']).__contains__(input):
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
-
                 self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
 
-                self.ui.lineEdit_parcelle.clear()
+            self.ui.lineEdit_parcelle.clear()
 
     def communes(self, input):
         communesLayer = iface.activeLayer()
