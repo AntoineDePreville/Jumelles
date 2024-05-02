@@ -25,11 +25,10 @@ import json
 import sys
 
 import requests
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QObject, pyqtSlot
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsCoordinateReferenceSystem, QgsRectangle
-from qgis.gui import QgsMapCanvas
+from qgis._core import QgsPoint, QgsRectangle, QgsFillSymbol, QgsSingleSymbolRenderer
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -219,12 +218,11 @@ class Jumelles:
             elif inputCommunes != "":
                 self.communes(inputCommunes)
 
-
     def dossiers(self, input):
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
         for f in featDossiers:
-            if f['Mandat'].__contains__(input):
+            if input == f['Mandat']:
                 self.ui.listWidget_resultats.addItem(f['Mandat'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
@@ -235,8 +233,6 @@ class Jumelles:
                 QgsPoint(x, y)
                 canvas.refresh()
                 break
-            else:
-                self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas")
 
             self.ui.lineEdit_dossier.clear()
 
@@ -244,21 +240,19 @@ class Jumelles:
         df = iface.activeLayer()
         features = df.getFeatures()
         for f in features:
-            if int(input) == f.id():
+            if f['Num_offre'].__contains__(input):
                 self.ui.listWidget_resultats.addItem(f['Num_offre'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
-                zoom_factor = 2.0
+                zoom_factor = 50.0
                 rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
                 canvas.setExtent(rect)
                 QgsPoint(x, y)
                 canvas.refresh()
                 break
-            else:
-                self.ui.listWidget_resultats.addItem("Erreur: l'offre n'existe pas")
 
-            self.ui.lineEdit_offre.clear()
+        self.ui.lineEdit_offre.clear()
 
     def parcelles(self, input):
         parcellesLayer = iface.activeLayer()
@@ -267,15 +261,28 @@ class Jumelles:
             if str(f['no_parcelle']).__contains__(input):
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
 
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
+
+                self.ui.lineEdit_parcelle.clear()
 
     def communes(self, input):
         communesLayer = iface.activeLayer()
-        featComm = communesLayer.getFeatures()
-        for f in featComm:
-            if f['commune'].__contains__(input):
-                self.ui.listWidget_resultats.addItem(input)
+        featCommunes = communesLayer.getFeatures()
+        for f in featCommunes:
+            if str(f['commune']).__contains__(input):
+                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
             else:
                 self.ui.listWidget_resultats.addItem("Erreur: la commune n'existe pas")
 
         self.ui.lineEdit_commune.clear()
-        self.ui.lineEdit_parcelle.clear()
+
+    def zoom(self, item):
+        selected_item = item.text()
+        layer = iface.activeLayer()
+        for f in layer.getFeatures():
+            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+                layer.removeSelection()
+                layer.select(f.id())
+                iface.mapCanvas().setExtent(f.geometry().boundingBox())
+                iface.mapCanvas().refresh()
+                break
