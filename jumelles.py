@@ -29,7 +29,7 @@ import requests
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsRectangle, QgsFeature
+from qgis._core import QgsPoint, QgsRectangle
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -37,7 +37,6 @@ from qgis.utils import iface
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
 import os.path
-import geopandas as gpd
 
 
 class Jumelles:
@@ -203,6 +202,8 @@ class Jumelles:
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
+
+            # Call of all methods that perfom all the work + inputs from UI.
             inputOffres = self.ui.lineEdit_offre.text()
             inputDossiers = self.ui.lineEdit_dossier.text()
             inputParcelles = self.ui.lineEdit_parcelle.text()
@@ -217,65 +218,59 @@ class Jumelles:
                 self.communes(inputCommunes)
 
     def dossiers(self, input):
-        dossierLayer = iface.activeLayer()
+        """'dossier' finds each 'Mandat' stored in the layer's attribute table"""
+        dossierLayer = iface.activeLayer()  # select the good layer. In this case 'Dossiers'
         featDossiers = dossierLayer.getFeatures()
         match_found = False
+        # Looks for each value in the attribute table
         for f in featDossiers:
-            if str(f['Mandat']) == input:
+            if str(f['Mandat']) == input:  # f stores the column "Mandat"
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f"Mandat {f['Mandat']}")
-                canvas = iface.mapCanvas()
-                x = f.geometry().asPoint().x()
-                y = f.geometry().asPoint().y()
-                zoom_factor = 50.0
-                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
-                canvas.setExtent(rect)
-                QgsPoint(x, y)
-                canvas.refresh()
+                self.ui.listWidget_resultats.addItem(
+                    f"Mandat {f['Mandat']}")  # Displays the resulting value in the list widget
+                # Displays the corresponding map
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
                 break
-
+        # Error message is case you mistyped the right folder ;)
         if not match_found:
-            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
-
-        # self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
+            self.ui.listWidget_resultats.addItem(f"Erreur: le dossier {input} n'existe pas.")
 
         self.ui.lineEdit_dossier.clear()
 
     def offres(self, input):
-        df = iface.activeLayer()
+        """'offres' finds each 'Num_offre' stored in the layer's attribute table"""
+        df = iface.activeLayer()  # select the good layer. In this case 'offres'
         features = df.getFeatures()
         match_found = False
+        # Looks for each value in the attribute table
         for f in features:
             if f['Num_offre'].__contains__(input):
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f['Num_offre'])
-                canvas = iface.mapCanvas()
-                x = f.geometry().asPoint().x()
-                y = f.geometry().asPoint().y()
-                zoom_factor = 50.0
-                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
-                canvas.setExtent(rect)
-                QgsPoint(x, y)
-                canvas.refresh()
+                self.ui.listWidget_resultats.addItem(f['Num_offre'])  # Displays the value into the list widget
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
                 break
-
+        # Error message in case you mistyped the right offer ;)
         if not match_found:
-            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+            self.ui.listWidget_resultats.addItem(f"Erreur: l'offre OF-000-{input} n'existe pas.")
 
         self.ui.lineEdit_offre.clear()
 
     def parcelles(self, input):
-        parcellesLayer = iface.activeLayer()
+        """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
+        parcellesLayer = iface.activeLayer()  # select the good layer. In this case 'CAD_PARCELLE_MENSU'
         featParcelles = parcellesLayer.getFeatures()
         match_found = False
+        # Looks for each value in the attribute table
         for f in featParcelles:
             if str(f['no_parcelle']).__contains__(input):
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
-
+                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_pc)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+        # Error message in case you mistyped the right parcel ;)
         if not match_found:
-            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+            self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {input} n'existe pas.")
 
         self.ui.lineEdit_parcelle.clear()
 
@@ -286,34 +281,53 @@ class Jumelles:
         for f in featCommunes:
             if str(f['commune']).__contains__(input):
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_pc)
 
         if not match_found:
-            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+            self.ui.listWidget_resultats.addItem(f"Erreur: la commune {input} n'existe pas.")
 
         self.ui.lineEdit_commune.clear()
 
-    def zoom(self, item):
+    def zoom_pc(self, item):
+        """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
         layer = iface.activeLayer()
-        if layer == 'CAD_PARCELLE_MENSU':
-            for f in layer.getFeatures():
-                if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
-                    layer.removeSelection()
-                    layer.select(f.id())
-                    iface.mapCanvas().setExtent(f.geometry().boundingBox())
-                    iface.mapCanvas().refresh()
-                    break
+        for f in layer.getFeatures():
+            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+                layer.removeSelection()
+                layer.select(f.id())
+                iface.mapCanvas().setExtent(f.geometry().boundingBox())
+                iface.mapCanvas().refresh()
+                break
 
-        elif layer == 'Dossiers — virtual_layer':
-            for f in layer.getFeatures():
-                if selected_item.startswith(f"Mandat {f['Mandat']}"):
-                    canvas = iface.mapCanvas()
-                    x = f.geometry().asPoint().x()
-                    y = f.geometry().asPoint().y()
-                    zoom_factor = 50.0
-                    rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
-                    canvas.setExtent(rect)
-                    QgsPoint(x, y)
-                    canvas.refresh()
-                    break
+    def zoom_d(self, item):
+        selected_item = item.text()
+        layer = iface.activeLayer()
+        for f in layer.getFeatures():
+            if selected_item.startswith(f"Mandat {f['Mandat']}"):
+                canvas = iface.mapCanvas()
+                x = f.geometry().asPoint().x()
+                y = f.geometry().asPoint().y()
+                zoom_factor = 50.0
+                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                layer.select(f.id())
+                canvas.setExtent(rect)
+                QgsPoint(x, y)
+                canvas.refresh()
+                break
+
+    def zoom_o(self, item):
+        selected_item = item.text()
+        layer = iface.activeLayer()
+        for f in layer.getFeatures():
+            if selected_item.startswith(f['Num_offre']):
+                canvas = iface.mapCanvas()
+                x = f.geometry().asPoint().x()
+                y = f.geometry().asPoint().y()
+                zoom_factor = 50.0
+                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                layer.select(f.id())
+                canvas.setExtent(rect)
+                QgsPoint(x, y)
+                canvas.refresh()
+                break
