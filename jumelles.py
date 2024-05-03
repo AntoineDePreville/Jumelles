@@ -267,7 +267,7 @@ class Jumelles:
             if str(f['no_parcelle']).__contains__(input):
                 match_found = True
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_pc)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
         # Error message in case you mistyped the right parcel ;)
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {input} n'existe pas.")
@@ -281,14 +281,26 @@ class Jumelles:
         for f in featCommunes:
             if str(f['commune']).__contains__(input):
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_pc)
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)
 
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: la commune {input} n'existe pas.")
 
         self.ui.lineEdit_commune.clear()
 
-    def zoom_pc(self, item):
+    def zoom_p(self, item):
+        """Diplays the map according to selection in the parcelle() method"""
+        selected_item = item.text()
+        layer = iface.activeLayer()
+        for f in layer.getFeatures():
+            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+                layer.removeSelection()
+                layer.select(f.id())
+                iface.mapCanvas().setExtent(f.geometry().boundingBox())
+                iface.mapCanvas().refresh()
+                break
+    
+    def zoom_c(self, item):
         """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
         layer = iface.activeLayer()
