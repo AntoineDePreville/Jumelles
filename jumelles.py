@@ -21,14 +21,15 @@
  *                                                                         *
  ***************************************************************************/
 """
+import inspect
 import json
 import sys
 
 import requests
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QObject, pyqtSlot
-from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsRectangle, QgsFillSymbol, QgsSingleSymbolRenderer
+from qgis._core import QgsPoint, QgsRectangle, QgsFeature
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -76,9 +77,6 @@ class Jumelles:
 
         self.ui = JumellesDialog()
         self.ui.pushButton_rechercher.clicked.connect(self.run)
-
-    def param(self):
-        self.ui.lineEdit_offre.setDisabled(False)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -221,9 +219,11 @@ class Jumelles:
     def dossiers(self, input):
         dossierLayer = iface.activeLayer()
         featDossiers = dossierLayer.getFeatures()
+        match_found = False
         for f in featDossiers:
             if str(f['Mandat']) == input:
-                self.ui.listWidget_resultats.addItem(f['Mandat'])
+                match_found = True
+                self.ui.listWidget_resultats.addItem(f"Mandat {f['Mandat']}")
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -234,13 +234,20 @@ class Jumelles:
                 canvas.refresh()
                 break
 
-            self.ui.lineEdit_dossier.clear()
+        if not match_found:
+            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+
+        # self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
+
+        self.ui.lineEdit_dossier.clear()
 
     def offres(self, input):
         df = iface.activeLayer()
         features = df.getFeatures()
+        match_found = False
         for f in features:
             if f['Num_offre'].__contains__(input):
+                match_found = True
                 self.ui.listWidget_resultats.addItem(f['Num_offre'])
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
@@ -252,36 +259,61 @@ class Jumelles:
                 canvas.refresh()
                 break
 
+        if not match_found:
+            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+
         self.ui.lineEdit_offre.clear()
 
     def parcelles(self, input):
         parcellesLayer = iface.activeLayer()
         featParcelles = parcellesLayer.getFeatures()
+        match_found = False
         for f in featParcelles:
             if str(f['no_parcelle']).__contains__(input):
+                match_found = True
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
                 self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
 
-            self.ui.lineEdit_parcelle.clear()
+        if not match_found:
+            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
+
+        self.ui.lineEdit_parcelle.clear()
 
     def communes(self, input):
         communesLayer = iface.activeLayer()
         featCommunes = communesLayer.getFeatures()
+        match_found = False
         for f in featCommunes:
             if str(f['commune']).__contains__(input):
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
-            else:
-                self.ui.listWidget_resultats.addItem("Erreur: la commune n'existe pas")
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom)
+
+        if not match_found:
+            self.ui.listWidget_resultats.addItem("Erreur: le dossier n'existe pas.")
 
         self.ui.lineEdit_commune.clear()
 
     def zoom(self, item):
         selected_item = item.text()
         layer = iface.activeLayer()
-        for f in layer.getFeatures():
-            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
-                layer.removeSelection()
-                layer.select(f.id())
-                iface.mapCanvas().setExtent(f.geometry().boundingBox())
-                iface.mapCanvas().refresh()
-                break
+        if layer == 'CAD_PARCELLE_MENSU':
+            for f in layer.getFeatures():
+                if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+                    layer.removeSelection()
+                    layer.select(f.id())
+                    iface.mapCanvas().setExtent(f.geometry().boundingBox())
+                    iface.mapCanvas().refresh()
+                    break
+
+        elif layer == 'Dossiers — virtual_layer':
+            for f in layer.getFeatures():
+                if selected_item.startswith(f"Mandat {f['Mandat']}"):
+                    canvas = iface.mapCanvas()
+                    x = f.geometry().asPoint().x()
+                    y = f.geometry().asPoint().y()
+                    zoom_factor = 50.0
+                    rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                    canvas.setExtent(rect)
+                    QgsPoint(x, y)
+                    canvas.refresh()
+                    break
