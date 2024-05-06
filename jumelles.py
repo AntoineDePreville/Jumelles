@@ -25,7 +25,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsRectangle
+from qgis._core import QgsPoint, QgsRectangle, QgsProject, QgsVectorLayer
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -208,6 +208,8 @@ class Jumelles:
                 self.offres(inputOffres)
             elif inputDossiers != "":
                 self.dossiers(inputDossiers)
+            elif inputParcelles != "" and inputCommunes != "":
+                self.parComm(inputParcelles, inputCommunes)
             elif inputParcelles != "":
                 self.parcelles(inputParcelles)
             elif inputCommunes != "":
@@ -263,17 +265,16 @@ class Jumelles:
         match_found = False
         # Looks for each value in the attribute table
         for f in featParcelles:
-            if str(f['no_parcelle']).__contains__(input):
+            if str(f['no_parcelle']) == input:
                 match_found = True
                 self.ui.listWidget_resultats.addItem(
                     f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
                 self.ui.listWidget_resultats.itemDoubleClicked.connect(
                     self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+
         # Error message in case you mistyped the right parcel ;)
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {input} n'existe pas.")
-
-        self.ui.lineEdit_parcelle.clear()
 
     def communes(self, input):
         communesLayer = iface.activeLayer()
@@ -281,6 +282,7 @@ class Jumelles:
         match_found = False
         for f in featCommunes:
             if str(f['commune']).__contains__(input):
+                match_found = True
                 self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
                 self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)
 
@@ -288,6 +290,19 @@ class Jumelles:
             self.ui.listWidget_resultats.addItem(f"Erreur: la commune {input} n'existe pas.")
 
         self.ui.lineEdit_commune.clear()
+
+    def parComm(self, inputParc, inputComm):
+        parcoLayer = iface.activeLayer()
+        featParCo = parcoLayer.getFeatures()
+        match_found = False
+        for f in featParCo:
+            if str(f['no_parcelle']) == inputParc and str(f['commune']).__contains__(inputComm):
+                match_found = True
+                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)
+
+        if not match_found:
+            self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {inputParc} - {inputComm} n'existe pas.")
 
     def zoom_p(self, item):
         """Diplays the map according to selection in the parcelle() method"""
