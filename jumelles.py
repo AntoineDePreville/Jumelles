@@ -21,11 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-import inspect
-import json
-import sys
 
-import requests
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
@@ -217,6 +213,9 @@ class Jumelles:
             elif inputCommunes != "":
                 self.communes(inputCommunes)
 
+            self.ui.pushButton_annuler.clicked.connect(self.clear_all)
+            self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)
+
     def dossiers(self, input):
         """'dossier' finds each 'Mandat' stored in the layer's attribute table"""
         dossierLayer = iface.activeLayer()  # select the good layer. In this case 'Dossiers'
@@ -266,8 +265,10 @@ class Jumelles:
         for f in featParcelles:
             if str(f['no_parcelle']).__contains__(input):
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+                self.ui.listWidget_resultats.addItem(
+                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
         # Error message in case you mistyped the right parcel ;)
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {input} n'existe pas.")
@@ -299,7 +300,7 @@ class Jumelles:
                 iface.mapCanvas().setExtent(f.geometry().boundingBox())
                 iface.mapCanvas().refresh()
                 break
-    
+
     def zoom_c(self, item):
         """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
@@ -343,3 +344,6 @@ class Jumelles:
                 QgsPoint(x, y)
                 canvas.refresh()
                 break
+
+    def clear_all(self):
+        self.ui.listWidget_resultats.clear()
