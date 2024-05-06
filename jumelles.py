@@ -25,7 +25,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsRectangle, QgsProject, QgsVectorLayer
+from qgis._core import QgsPoint, QgsRectangle
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -204,6 +204,7 @@ class Jumelles:
             inputDossiers = self.ui.lineEdit_dossier.text()
             inputParcelles = self.ui.lineEdit_parcelle.text()
             inputCommunes = self.ui.lineEdit_commune.text()
+            inputAdresses = self.ui.lineEdit_adresse.text()
             if inputOffres != "":
                 self.offres(inputOffres)
             elif inputDossiers != "":
@@ -214,6 +215,8 @@ class Jumelles:
                 self.parcelles(inputParcelles)
             elif inputCommunes != "":
                 self.communes(inputCommunes)
+            elif inputAdresses != "":
+                self.adresses(inputAdresses)
 
             self.ui.pushButton_annuler.clicked.connect(self.clear_all)
             self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)
@@ -291,7 +294,27 @@ class Jumelles:
 
         self.ui.lineEdit_commune.clear()
 
+    def adresses(self, input):
+        """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
+        self.ui.listWidget_resultats.clear()
+        adressesLayer = iface.activeLayer()  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
+        featParcelles = adressesLayer.getFeatures()
+        match_found = False
+        # Looks for each value in the attribute table
+        for f in featParcelles:
+            if str(f['ADRESSE']).__contains__(input) or str(f['ADRESSE']).lower().__contains__(input):
+                match_found = True
+                self.ui.listWidget_resultats.addItem(
+                    f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}')  # Displays the parcel number along with the commune
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+
+        # Error message in case you mistyped the right parcel ;)
+        if not match_found:
+            self.ui.listWidget_resultats.addItem(f"Erreur: l'adresse n'existe pas.")
+
     def parComm(self, inputParc, inputComm):
+        self.ui.listWidget_resultats.clear()
         parcoLayer = iface.activeLayer()
         featParCo = parcoLayer.getFeatures()
         match_found = False
@@ -349,6 +372,23 @@ class Jumelles:
         layer = iface.activeLayer()
         for f in layer.getFeatures():
             if selected_item.startswith(f['Num_offre']):
+                canvas = iface.mapCanvas()
+                x = f.geometry().asPoint().x()
+                y = f.geometry().asPoint().y()
+                zoom_factor = 50.0
+                rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
+                layer.select(f.id())
+                canvas.setExtent(rect)
+                QgsPoint(x, y)
+                canvas.refresh()
+                break
+
+    def zoom_a(self, item):
+        """Diplays the map according to selection in the parcelle() method"""
+        selected_item = item.text()
+        layer = iface.activeLayer()
+        for f in layer.getFeatures():
+            if selected_item.startswith(f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}'):
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
