@@ -21,11 +21,11 @@
  *                                                                         *
  ***************************************************************************/
 """
-
+import numpy as np
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis._core import QgsPoint, QgsRectangle, QgsProject, QgsVectorLayer
+from qgis._core import QgsPoint, QgsRectangle, QgsProject
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
@@ -223,70 +223,186 @@ class Jumelles:
             self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)  # idem
             self.ui.pushButton_arreter.clicked.connect(self.close)  # call the method close() to close the widget window
 
+    def merge(self, arr, p, q, r):
+        n1 = q - p + 1
+        n2 = r - q
+        l = [0]*n1
+        k = [0]*n2
+        for i in range(0, n1):
+            l[i] = arr[p+i]
+
+        for j in range(0, n2):
+            k[j] = arr[q+1+j]
+
+        i = 0
+        j = 0
+        n = p
+        while i < n1 and j < n2:
+            if l[i] <= k[j]:
+                arr[n] = l[i]
+                i += 1
+
+            else:
+                arr[n] = k[j]
+                j += 1
+            n += 1
+
+        while i < n1:
+            arr[n] = l[i]
+            i += 1
+            n += 1
+
+        while j < n2:
+            arr[n] = k[j]
+            j += 1
+            n += 1
+
+    def sort(self, arr, p, r):
+        if p < r:
+            q = p + (r - p)//2
+            self.sort(arr, p, q)
+            self.sort(arr, q+1, r)
+            self.merge(arr, p, q, r)
+
+    def search_dossiers(self, arr, length, target):
+        l = 0
+        r = length - 1
+        while l <= r:
+            mid = (r + l) // 2
+            if int(arr[mid]) < int(target):
+                l = mid + 1
+            elif int(arr[mid]) > int(target):
+                r = mid - 1
+            else:
+                return self.ui.listWidget_resultats.addItem(f"Mandat {str(target)}")
+        return self.ui.listWidget_resultats.addItem(f"Erreur: le mandat n'existe pas.")
+
     def dossiers(self, input):
         """'dossier()' finds each 'Mandat' stored in the layer's attribute table"""
-        dossierLayer = QgsProject.instance().mapLayersByName("Dossiers — virtual_layer")[0]  # selects the good layer. In this case 'Dossiers - virtual layer'
+        dossierLayer = QgsProject.instance().mapLayersByName("Dossiers — virtual_layer")[
+            0]  # selects the good layer. In this case 'Dossiers - virtual layer'
         iface.setActiveLayer(dossierLayer)  # gets it active
-        featDossiers = dossierLayer.getFeatures()  # gets the layer's features
-        match_found = False
-        # Looks for each value in the attribute table
-        for f in featDossiers:
-            if str(f['Mandat']) == input:  # f stores the column "Mandat"
-                match_found = True
-                self.ui.listWidget_resultats.addItem(
-                    f"Mandat {f['Mandat']}")  # Displays the resulting value in the list widget
-                # Displays the corresponding map
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(
-                    self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
-                break
-        # Error message is case you mistyped the right folder ;)
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: le dossier {input} n'existe pas.")
+
+        index = dossierLayer.fields().indexFromName("Mandat")
+        list = [i.attributes()[index] for i in dossierLayer.getFeatures()]
+
+        arr = np.array(list)
+        length = len(arr)
+        self.sort(arr, 0, length-1)
+        result = self.search_dossiers(arr, length, input)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+            self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
 
         self.ui.lineEdit_dossier.clear()
+
+    def search_offres(self, list, length, target):
+        left = 0
+        right = length - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if int(list[mid][-3:]) < int(target):
+                left = mid + 1
+            elif int(list[mid][-3:]) > int(target):
+                right = mid - 1
+            else:
+                return self.ui.listWidget_resultats.addItem(str(list[mid]))
+        return self.ui.listWidget_resultats.addItem("Can't find the value.")
 
     def offres(self, input):
         """'offres()' finds each 'Num_offre' stored in the layer's attribute table"""
         df = QgsProject.instance().mapLayersByName("offres")[0]  # selects the good layer. In this case 'offres'
         iface.setActiveLayer(df)  # gets it active
-        features = df.getFeatures()  # gets the layer's features
         match_found = False
-        # Looks for each value in the attribute table
-        for f in features:
-            if f['Num_offre'].__contains__(input):
-                match_found = True
-                self.ui.listWidget_resultats.addItem(f['Num_offre'])  # Displays the value into the list widget
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(
-                    self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
-                break
+        if df is not None:
+            match_found = True
+            index = df.fields().indexFromName("Num_offre")
+            list = []
+            for f in df.getFeatures():
+                val = f.attributes()[index]
+                list.append(val)
+            length = len(list)
+            result = self.search_offres(list, length, input)
+
+            self.ui.listWidget_resultats.addItem(result)
+            self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
         # Error message in case you mistyped the right offer ;)
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: l'offre OF-000-{input} n'existe pas.")
 
         self.ui.lineEdit_offre.clear()
 
+    def merge_parcelles(self, mat, p, q, r):
+        n1 = q - p + 1
+        n2 = r - q
+        L = []
+        K = []
+        for i in range(0, n1):
+            L[i] = mat[p + i]
+
+        for j in range(0, n2):
+            K[j] = mat[q + 1 + j]
+
+        i = 0
+        j = 0
+        n = p
+        while i < n1 and j < n2:
+            if L[i] <= K[j]:
+                mat[n] = L[i]
+                i += 1
+
+            else:
+                mat[n] = K[j]
+                j += 1
+            n += 1
+
+    def sort_parcelles(self, mat, p, r):
+        if p < r:
+            q = p + (r - p)//2
+            self.sort_parcelles(mat, p, q)
+            self.sort_parcelles(mat, q+1, r)
+            self.merge_parcelles(mat, p, q, r)
+
+    def search_parcelles(self, mat, length, target):
+        left = 0
+        right = length - 1
+
+        while left <= right:
+            mid = (left + right) // 2
+            if int(mat[mid]) < int(target):
+                left = mid + 1
+            elif int(mat[mid]) > int(target):
+                right = mid - 1
+            else:
+                return self.ui.listWidget_resultats.addItem(str(mat[mid]))
+        return self.ui.listWidget_resultats.addItem("Can't find the value.")
+
     def parcelles(self, input):
         """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
-        parcellesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
+        parcellesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+            0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(parcellesLayer)  # sets it active
-        featParcelles = parcellesLayer.getFeatures()  # gets the layer's features
-        match_found = False
-        # Looks for each value in the attribute table
-        for f in featParcelles:
-            if str(f['no_parcelle']) == input:
-                match_found = True
-                self.ui.listWidget_resultats.addItem(
-                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(
-                    self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
 
-        # Error message in case you mistyped the right parcel ;)
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {input} n'existe pas.")
+        index1 = parcellesLayer.fields().indexFromName("no_parcelle")
+        list1 = [i.attributes()[index1] for i in parcellesLayer.getFeatures()]
+
+        index2 = parcellesLayer.fields().indexFromName("commune")
+        list2 = [i.attributes()[index2] for i in parcellesLayer.getFeatures()]
+
+        M = np.column_stack((list1, list2))
+
+        length = len(M)
+        self.sort_parcelles(M, 0, length-1)
+        result = self.search_parcelles(M, length, input)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
 
     def communes(self, input):
         """'communes()' finds each 'commune' stored in the layer's attribute table"""
-        communesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
+        communesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+            0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(communesLayer)  # gets it active
         featCommunes = communesLayer.getFeatures()  # gets the layer's features
         match_found = False
@@ -294,8 +410,10 @@ class Jumelles:
         for f in featCommunes:
             if str(f['commune']).__contains__(input):
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+                self.ui.listWidget_resultats.addItem(
+                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
+                self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_c)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
         # error message in case you mistyped the right commune
         if not match_found:
             self.ui.listWidget_resultats.addItem(f"Erreur: la commune {input} n'existe pas.")
@@ -305,8 +423,8 @@ class Jumelles:
     def adresses(self, input):
         """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        adressesLayer = QgsProject.instance().mapLayersByName("CAD_ADRESSE:CAD_ADRESSE")[
-            0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
+        adressesLayer = QgsProject.instance().mapLayersByName("CAD_ADRESSE")[
+            0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(adressesLayer)
         featAdresses = adressesLayer.getFeatures()
         match_found = False
@@ -327,7 +445,8 @@ class Jumelles:
     def parComm(self, inputParc, inputComm):
         """'parComm()' finds each 'no_parcelle' and 'commune' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        parcoLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
+        parcoLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+            0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
         iface.setActiveLayer(parcoLayer)  # sets it active
         featParCo = parcoLayer.getFeatures()  # gets the layer's features
         match_found = False
@@ -335,7 +454,8 @@ class Jumelles:
         for f in featParCo:
             if str(f['no_parcelle']) == inputParc and str(f['commune']).__contains__(inputComm):
                 match_found = True
-                self.ui.listWidget_resultats.addItem(f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel along with the commune
+                self.ui.listWidget_resultats.addItem(
+                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel along with the commune
                 self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)
         # error message in case you mistyped the right parcel or commune
         if not match_found:
@@ -345,10 +465,10 @@ class Jumelles:
         """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
         layer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
-            0]  # select the good layer. In this case 'CAD_PARCELLE_MENSU'
+            0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+            if selected_item == f"{f['no_parcelle']} - {f['commune']}":
                 layer.removeSelection()
                 layer.select(f.id())
                 iface.mapCanvas().setExtent(f.geometry().boundingBox())
@@ -362,7 +482,7 @@ class Jumelles:
             0]  # select the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item.startswith(f"{f['no_parcelle']} - {f['commune']}"):
+            if selected_item == f"{f['no_parcelle']} - {f['commune']}":
                 layer.removeSelection()
                 layer.select(f.id())
                 iface.mapCanvas().setExtent(f.geometry().boundingBox())
@@ -375,7 +495,7 @@ class Jumelles:
         layer = QgsProject.instance().mapLayersByName("Dossiers — virtual_layer")[0]
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item.startswith(f"Mandat {f['Mandat']}"):
+            if selected_item == f"Mandat {f['Mandat']}":
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -383,7 +503,6 @@ class Jumelles:
                 rect = QgsRectangle(x - zoom_factor, y - zoom_factor, x + zoom_factor, y + zoom_factor)
                 layer.select(f.id())
                 canvas.setExtent(rect)
-                QgsPoint(x, y)
                 canvas.refresh()
                 break
 
@@ -393,7 +512,7 @@ class Jumelles:
         layer = QgsProject.instance().mapLayersByName("offres")[0]
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item.startswith(f['Num_offre']):
+            if selected_item == f['Num_offre']:
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -408,11 +527,11 @@ class Jumelles:
     def zoom_a(self, item):
         """Diplays the map according to selection in the adresse() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("CAD_ADRESSE:CAD_ADRESSE")[
-            0]  # select the good layer. In this case 'CAD_PARCELLE_MENSU'
+        layer = QgsProject.instance().mapLayersByName("CAD_ADRESSE")[
+            0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item.startswith(f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}'):
+            if selected_item == f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}':
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
