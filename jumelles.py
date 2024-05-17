@@ -222,7 +222,7 @@ class Jumelles:
             self.ui.pushButton_annuler.clicked.connect(self.clear_all)  # clears the results widget
             self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)  # idem
             self.ui.pushButton_arreter.clicked.connect(self.close)  # call the method close() to close the widget window
-
+    """
     def merge(self, arr, p, q, r):
         n1 = q - p + 1
         n2 = r - q
@@ -263,15 +263,17 @@ class Jumelles:
             self.sort(arr, p, q)
             self.sort(arr, q+1, r)
             self.merge(arr, p, q, r)
+    """
 
     def search_dossiers(self, arr, length, target):
         l = 0
         r = length - 1
+        array = sorted(arr, key=int)
         while l <= r:
             mid = (r + l) // 2
-            if int(arr[mid]) < int(target):
+            if int(array[mid]) < int(target):
                 l = mid + 1
-            elif int(arr[mid]) > int(target):
+            elif int(array[mid]) > int(target):
                 r = mid - 1
             else:
                 return self.ui.listWidget_resultats.addItem(f"Mandat {str(target)}")
@@ -285,29 +287,28 @@ class Jumelles:
 
         index = dossierLayer.fields().indexFromName("Mandat")
         list = [i.attributes()[index] for i in dossierLayer.getFeatures()]
-
         arr = np.array(list)
         length = len(arr)
-        self.sort(arr, 0, length-1)
         result = self.search_dossiers(arr, length, input)
         self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(
-            self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
+            self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory
+        # to display
 
         self.ui.lineEdit_dossier.clear()
 
-    def search_offres(self, list, length, target):
+    def search_offres(self, arr, length, target):
         left = 0
         right = length - 1
-
+        arr.sort()
         while left <= right:
             mid = (left + right) // 2
-            if int(list[mid][-3:]) < int(target):
+            if str(arr[mid][-3:]) < str(target[-3:]):
                 left = mid + 1
-            elif int(list[mid][-3:]) > int(target):
+            elif str(arr[mid][-3:]) > str(target[-3:]):
                 right = mid - 1
             else:
-                return self.ui.listWidget_resultats.addItem(str(list[mid]))
+                return self.ui.listWidget_resultats.addItem(arr[mid])
         return self.ui.listWidget_resultats.addItem("Can't find the value.")
 
     def offres(self, input):
@@ -322,8 +323,9 @@ class Jumelles:
             for f in df.getFeatures():
                 val = f.attributes()[index]
                 list.append(val)
-            length = len(list)
-            result = self.search_offres(list, length, input)
+            arr = np.array(list)
+            length = len(arr)
+            result = self.search_offres(arr, length, input)
 
             self.ui.listWidget_resultats.addItem(result)
             self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
@@ -333,50 +335,26 @@ class Jumelles:
 
         self.ui.lineEdit_offre.clear()
 
-    def merge_parcelles(self, mat, p, q, r):
-        n1 = q - p + 1
-        n2 = r - q
-        L = []
-        K = []
-        for i in range(0, n1):
-            L[i] = mat[p + i]
+    def sort_matrix(self, mat):
+        matrix = sorted(mat, key=lambda row: row[0])
+        return matrix
 
-        for j in range(0, n2):
-            K[j] = mat[q + 1 + j]
+    def search_parcelles(self, mat, target):
+        if not mat or not mat[0]:
+            return None
 
-        i = 0
-        j = 0
-        n = p
-        while i < n1 and j < n2:
-            if L[i] <= K[j]:
-                mat[n] = L[i]
-                i += 1
+        rows = len(mat)
+        cols = len(mat[0])
+        row, col = 0, cols - 1
 
+        while row < rows and col >= 0:
+            if mat[row][col] == int(target):
+                return self.ui.listWidget_resultats.addItem(f"Parcelle {mat[row][col]}")
+            elif mat[row][col] > int(target):
+                col -= 1
             else:
-                mat[n] = K[j]
-                j += 1
-            n += 1
-
-    def sort_parcelles(self, mat, p, r):
-        if p < r:
-            q = p + (r - p)//2
-            self.sort_parcelles(mat, p, q)
-            self.sort_parcelles(mat, q+1, r)
-            self.merge_parcelles(mat, p, q, r)
-
-    def search_parcelles(self, mat, length, target):
-        left = 0
-        right = length - 1
-
-        while left <= right:
-            mid = (left + right) // 2
-            if int(mat[mid]) < int(target):
-                left = mid + 1
-            elif int(mat[mid]) > int(target):
-                right = mid - 1
-            else:
-                return self.ui.listWidget_resultats.addItem(str(mat[mid]))
-        return self.ui.listWidget_resultats.addItem("Can't find the value.")
+                row += 1
+        return self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {target} n'existe pas.")
 
     def parcelles(self, input):
         """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
@@ -392,9 +370,8 @@ class Jumelles:
 
         M = np.column_stack((list1, list2))
 
-        length = len(M)
-        self.sort_parcelles(M, 0, length-1)
-        result = self.search_parcelles(M, length, input)
+        self.sort_matrix(M)
+        result = self.search_parcelles(M, input)
         self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(
                     self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
@@ -420,27 +397,42 @@ class Jumelles:
 
         self.ui.lineEdit_commune.clear()
 
+    def search_adresses(self, mat, target):
+        r = len(mat[:, 0])-1
+        # cols = len(mat[0])
+        l = 0
+        while l <= r:
+            mid = (r + l) // 2
+            if str(mat[mid, 0]) < str(target):
+                l = mid + 1
+            elif str(mat[mid, 0]) > str(target):
+                r = mid - 1
+            else:
+                return self.ui.listWidget_resultats.addItem(str(mat[mid, :]))
+        return self.ui.listWidget_resultats.addItem(f"Erreur: l'adresse n'existe pas.")
+
     def adresses(self, input):
         """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        adressesLayer = QgsProject.instance().mapLayersByName("CAD_ADRESSE")[
-            0]  # select the good layer. In this case 'CAD_ADRESSE'
+        adressesLayer = QgsProject.instance().mapLayersByName("CAD_ADRESSE:CAD_ADRESSE")[0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(adressesLayer)
-        featAdresses = adressesLayer.getFeatures()
-        match_found = False
-        # Looks for each value in the attribute table
-        for f in featAdresses:
-            if str(f['ADRESSE']).__contains__(input) or str(f['ADRESSE']).lower().__contains__(input) or str(
-                    f['ADRESSE']).upper().__contains__(input):
-                match_found = True
-                self.ui.listWidget_resultats.addItem(
-                    f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}')  # Displays the address, zip code and commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(
-                    self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
-        # Error message in case you mistyped the right parcel ;)
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: l'adresse n'existe pas.")
+        index1 = adressesLayer.fields().indexFromName("ADRESSE")
+        list1 = [i.attributes()[index1] for i in adressesLayer.getFeatures()]
+
+        index2 = adressesLayer.fields().indexFromName("NO_POSTAL")
+        list2 = [i.attributes()[index2] for i in adressesLayer.getFeatures()]
+
+        index3 = adressesLayer.fields().indexFromName("COMMUNE")
+        list3 = [i.attributes()[index3] for i in adressesLayer.getFeatures()]
+
+        M = np.column_stack((list1, list2, list3))
+
+        self.sort_matrix(M)
+        result = self.search_adresses(M, input)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+                    self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
     def parComm(self, inputParc, inputComm):
         """'parComm()' finds each 'no_parcelle' and 'commune' stored in the layer's attribute table"""
