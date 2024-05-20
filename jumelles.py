@@ -393,13 +393,14 @@ class Jumelles:
         self.ui.lineEdit_commune.clear()
 
     def search_adresses(self, mat, target):
-        result = []
-        for element in mat[:][0]:
-            if str(element).__contains__(str(target)):
-                result.append(str(element))
-            else:
-                self.ui.listWidget_resultats.addItem("Erreur: l'adresse n'existe pas.")
-        return result
+        n = len(mat)
+        found = False
+        for i in range(0, n):
+            if str(mat[i][:]).lower().__contains__(str(target)):
+                found = True
+                self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} {str(mat[i][1])} {str(mat[i][2])}")
+        if not found:
+            return self.ui.listWidget_resultats.addItem("Erreur: l'adresse n'existe pas.")
 
     def adresses(self, input):
         """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
@@ -420,8 +421,7 @@ class Jumelles:
 
         sorted_matrix = self.sort_matrix(M)
         result = self.search_adresses(sorted_matrix, input)
-        for res in result:
-            self.ui.listWidget_resultats.addItem(res)
+        self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
     def parComm(self, inputParc, inputComm):
