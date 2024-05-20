@@ -396,7 +396,7 @@ class Jumelles:
         n = len(mat)
         found = False
         for i in range(0, n):
-            if str(mat[i][:]).lower().__contains__(str(target)):
+            if str(mat[i][:]).__contains__(str(target)) or str(mat[i][:]).lower().__contains__(str(target)) or str(mat[i][:]).upper().__contains__(str(target)):
                 found = True
                 self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} {str(mat[i][1])} {str(mat[i][2])}")
         if not found:
