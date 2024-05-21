@@ -21,6 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+import numpy
 import numpy as np
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -222,48 +223,6 @@ class Jumelles:
             self.ui.pushButton_annuler.clicked.connect(self.clear_all)  # clears the results widget
             self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)  # idem
             self.ui.pushButton_arreter.clicked.connect(self.close)  # call the method close() to close the widget window
-    """
-    def merge(self, arr, p, q, r):
-        n1 = q - p + 1
-        n2 = r - q
-        l = [0]*n1
-        k = [0]*n2
-        for i in range(0, n1):
-            l[i] = arr[p+i]
-
-        for j in range(0, n2):
-            k[j] = arr[q+1+j]
-
-        i = 0
-        j = 0
-        n = p
-        while i < n1 and j < n2:
-            if l[i] <= k[j]:
-                arr[n] = l[i]
-                i += 1
-
-            else:
-                arr[n] = k[j]
-                j += 1
-            n += 1
-
-        while i < n1:
-            arr[n] = l[i]
-            i += 1
-            n += 1
-
-        while j < n2:
-            arr[n] = k[j]
-            j += 1
-            n += 1
-
-    def sort(self, arr, p, r):
-        if p < r:
-            q = p + (r - p)//2
-            self.sort(arr, p, q)
-            self.sort(arr, q+1, r)
-            self.merge(arr, p, q, r)
-    """
 
     def search_dossiers(self, arr, length, target):
         l = 0
@@ -309,7 +268,7 @@ class Jumelles:
                 right = mid - 1
             else:
                 return self.ui.listWidget_resultats.addItem(arr[mid])
-        return self.ui.listWidget_resultats.addItem("Can't find the value.")
+        return self.ui.listWidget_resultats.addItem("Erreur: l'offre n'existe pas.")
 
     def offres(self, input):
         """'offres()' finds each 'Num_offre' stored in the layer's attribute table"""
@@ -336,21 +295,17 @@ class Jumelles:
         self.ui.lineEdit_offre.clear()
 
     def sort_matrix(self, mat):
-        matrix = sorted(mat, key=lambda row: row[0])
-        return matrix
+        return sorted(mat, key= lambda row: row[0])
 
     def search_parcelles(self, mat, target):
-        r = len(mat) - 1
-        l = 0
-        while l <= r:
-            mid = (r + l) // 2
-            if int(mat[mid][0]) < int(target):
-                l = mid + 1
-            elif int(mat[mid][0]) > int(target):
-                r = mid - 1
-            else:
-                return self.ui.listWidget_resultats.addItem(f"{str(mat[mid][0])} - {str(mat[mid][1])}")
-        return self.ui.listWidget_resultats.addItem(f"Erreur: l'adresse n'existe pas.")
+        n = len(mat)-1
+        found = False
+        for i in range(0, n):
+            if int(mat[i][0]) == int(target):
+                found = True
+                self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} - {str(mat[i][1])}")
+        if not found:
+            return self.ui.listWidget_resultats.addItem("Erreur: la parcelle n'existe pas.")
 
     def parcelles(self, input):
         """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
@@ -360,45 +315,59 @@ class Jumelles:
 
         index1 = parcellesLayer.fields().indexFromName("no_parcelle")
         list1 = [i.attributes()[index1] for i in parcellesLayer.getFeatures()]
+        list1Int = [int(x) for x in list1]
 
         index2 = parcellesLayer.fields().indexFromName("commune")
         list2 = [i.attributes()[index2] for i in parcellesLayer.getFeatures()]
+        list2Str = [str(y) for y in list2]
 
-        M = np.column_stack((list1, list2))
+        M = np.column_stack((list1Int, list2Str))
 
-        self.sort_matrix(M)
-        result = self.search_parcelles(M, input)
+        sorted_matrix = self.sort_matrix(M)
+        result = self.search_parcelles(sorted_matrix, input)
         self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
 
+    def search_communes(self, mat, target):
+        n = len(mat) - 1
+        found = False
+        for i in range(0, n):
+            if str(mat[i][0]) == (str(target)) or str(mat[i][0]).lower() == (str(target)) or str(mat[i][0]).upper() == (str(target)):
+                found = True
+                self.ui.listWidget_resultats.addItem(f"{str(mat[i][1])} - {str(mat[i][0])}")
+        if not found:
+            return self.ui.listWidget_resultats.addItem("Erreur: la commune n'existe pas.")
+
     def communes(self, input):
         """'communes()' finds each 'commune' stored in the layer's attribute table"""
-        communesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
-            0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
+        communesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(communesLayer)  # gets it active
-        featCommunes = communesLayer.getFeatures()  # gets the layer's features
-        match_found = False
-        # Looks for each value in the attribute table
-        for f in featCommunes:
-            if str(f['commune']).__contains__(input):
-                match_found = True
-                self.ui.listWidget_resultats.addItem(
-                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel number along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(
-                    self.zoom_c)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
-        # error message in case you mistyped the right commune
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: la commune {input} n'existe pas.")
+
+        index1 = communesLayer.fields().indexFromName("no_parcelle")
+        list1 = [i.attributes()[index1] for i in communesLayer.getFeatures()]
+        list1Int = [int(x) for x in list1]
+
+        index2 = communesLayer.fields().indexFromName("commune")
+        list2 = [i.attributes()[index2] for i in communesLayer.getFeatures()]
+        list2Str = [str(y) for y in list2]
+
+        M = np.column_stack((list2Str, list1Int))
+
+        sorted_matrix = self.sort_matrix(M)
+        result = self.search_communes(sorted_matrix, input)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+            self.zoom_p)
 
         self.ui.lineEdit_commune.clear()
 
     def search_adresses(self, mat, target):
-        n = len(mat)
+        n = len(mat)-1
         found = False
         for i in range(0, n):
             if str(mat[i][:]).__contains__(str(target)) or str(mat[i][:]).lower().__contains__(str(target)) or str(mat[i][:]).upper().__contains__(str(target)):
                 found = True
-                self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} {str(mat[i][1])} {str(mat[i][2])}")
+                self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} - {str(mat[i][1])} {str(mat[i][2])}")
         if not found:
             return self.ui.listWidget_resultats.addItem("Erreur: l'adresse n'existe pas.")
 
@@ -424,24 +393,38 @@ class Jumelles:
         self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
+    def search_parco(self, mat, target1, target2):
+        n = len(mat) - 1
+        found = False
+        for i in range(0, n):
+            if (str(mat[i][1]) == (str(target2)) or str(mat[i][1]).lower() == (str(target2)) or str(mat[i][1]).upper() == (
+            str(target2))) and (int(mat[i][0]) == int(target1)):
+                found = True
+                self.ui.listWidget_resultats.addItem(f"{str(mat[i][0])} - {str(mat[i][1])}")
+        if not found:
+            return self.ui.listWidget_resultats.addItem("Erreur: la parcelle n'existe pas.")
+
     def parComm(self, inputParc, inputComm):
         """'parComm()' finds each 'no_parcelle' and 'commune' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        parcoLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
-            0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
+        parcoLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
         iface.setActiveLayer(parcoLayer)  # sets it active
-        featParCo = parcoLayer.getFeatures()  # gets the layer's features
-        match_found = False
-        # Looks for each value in the attribute table
-        for f in featParCo:
-            if str(f['no_parcelle']) == inputParc and str(f['commune']).__contains__(inputComm):
-                match_found = True
-                self.ui.listWidget_resultats.addItem(
-                    f'{f["no_parcelle"]} - {f["commune"]}')  # Displays the parcel along with the commune
-                self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_c)
-        # error message in case you mistyped the right parcel or commune
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: la parcelle {inputParc} - {inputComm} n'existe pas.")
+
+        index1 = parcoLayer.fields().indexFromName("no_parcelle")
+        list1 = [i.attributes()[index1] for i in parcoLayer.getFeatures()]
+        list1Int = [int(x) for x in list1]
+
+        index2 = parcoLayer.fields().indexFromName("commune")
+        list2 = [i.attributes()[index2] for i in parcoLayer.getFeatures()]
+        list2Str = [str(y) for y in list2]
+
+        M = np.column_stack((list1Int, list2Str))
+
+        sorted_matrix = self.sort_matrix(M)
+        result = self.search_parco(sorted_matrix, inputParc, inputComm)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+            self.zoom_p)
 
     def zoom_p(self, item):
         """Diplays the map according to selection in the parcelle() method"""
