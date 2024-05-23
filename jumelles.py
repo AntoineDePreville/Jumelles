@@ -21,7 +21,6 @@
  *                                                                         *
  ***************************************************************************/
 """
-import numpy
 import numpy as np
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -30,7 +29,7 @@ from qgis._core import QgsPoint, QgsRectangle, QgsProject
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
-# from .resources import *
+from .resources import *
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
 import os.path
@@ -225,9 +224,12 @@ class Jumelles:
             self.ui.pushButton_arreter.clicked.connect(self.close)  # call the method close() to close the widget window
 
     def search_dossiers(self, arr, length, target):
+        """this method searches the matches between input and attribute table for 'Dossiers'"""
         l = 0
         r = length - 1
+        # automatically sorts the column
         array = sorted(arr, key=int)
+        # makes the research according to binary search algorithm
         while l <= r:
             mid = (r + l) // 2
             if int(array[mid]) < int(target):
@@ -240,12 +242,12 @@ class Jumelles:
 
     def dossiers(self, input):
         """'dossier()' finds each 'Mandat' stored in the layer's attribute table"""
-        dossierLayer = QgsProject.instance().mapLayersByName("Dossiers — virtual_layer")[
-            0]  # selects the good layer. In this case 'Dossiers - virtual layer'
+        dossierLayer = QgsProject.instance().mapLayersByName("Dossiers")[
+            0]  # selects the good layer. In this case 'Dossiers'
         iface.setActiveLayer(dossierLayer)  # gets it active
 
         index = dossierLayer.fields().indexFromName("Mandat")
-        list = [i.attributes()[index] for i in dossierLayer.getFeatures()]
+        list = [i.attributes()[index] for i in dossierLayer.getFeatures()]  # creates list
         arr = np.array(list)
         length = len(arr)
         result = self.search_dossiers(arr, length, input)
@@ -257,47 +259,41 @@ class Jumelles:
         self.ui.lineEdit_dossier.clear()
 
     def search_offres(self, arr, length, target):
+        """this method searches the matches between input and attribute table for 'Offres'"""
         left = 0
         right = length - 1
         arr.sort()
         while left <= right:
             mid = (left + right) // 2
-            if str(arr[mid][-3:]) < str(target[-3:]):
+            if int(arr[mid][-3:]) < int(target):
                 left = mid + 1
-            elif str(arr[mid][-3:]) > str(target[-3:]):
+            elif int(arr[mid][-3:]) > int(target):
                 right = mid - 1
             else:
-                return self.ui.listWidget_resultats.addItem(arr[mid])
+                return self.ui.listWidget_resultats.addItem(str(arr[mid]))
         return self.ui.listWidget_resultats.addItem("Erreur: l'offre n'existe pas.")
 
     def offres(self, input):
-        """'offres()' finds each 'Num_offre' stored in the layer's attribute table"""
-        df = QgsProject.instance().mapLayersByName("offres")[0]  # selects the good layer. In this case 'offres'
+        df = QgsProject.instance().mapLayersByName("Offres")[0]  # selects the good layer. In this case 'offres'
         iface.setActiveLayer(df)  # gets it active
-        match_found = False
-        if df is not None:
-            match_found = True
-            index = df.fields().indexFromName("Num_offre")
-            list = []
-            for f in df.getFeatures():
-                val = f.attributes()[index]
-                list.append(val)
-            arr = np.array(list)
-            length = len(arr)
-            result = self.search_offres(arr, length, input)
+        index = df.fields().indexFromName("num_offre")
+        list = [i.attributes()[index] for i in df.getFeatures()]  # creates list
+        listStr = [str(y) for y in list]
 
-            self.ui.listWidget_resultats.addItem(result)
-            self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
-        # Error message in case you mistyped the right offer ;)
-        if not match_found:
-            self.ui.listWidget_resultats.addItem(f"Erreur: l'offre OF-000-{input} n'existe pas.")
+        arr = np.array(listStr)
+        length = len(arr)
+        result = self.search_offres(arr, length, input)
+        self.ui.listWidget_resultats.addItem(result)
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
 
         self.ui.lineEdit_offre.clear()
 
     def sort_matrix(self, mat):
+        """Sorts matrix"""
         return sorted(mat, key= lambda row: row[0])
 
     def search_parcelles(self, mat, target):
+        """this method searches the matches between input and attribute table for 'Parcelles'"""
         n = len(mat)-1
         found = False
         for i in range(0, n):
@@ -309,19 +305,19 @@ class Jumelles:
 
     def parcelles(self, input):
         """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
-        parcellesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+        parcellesLayer = QgsProject.instance().mapLayersByName("Parcelles")[
             0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(parcellesLayer)  # sets it active
 
-        index1 = parcellesLayer.fields().indexFromName("no_parcelle")
+        index1 = parcellesLayer.fields().indexFromName("NO_PARCELLE")
         list1 = [i.attributes()[index1] for i in parcellesLayer.getFeatures()]
         list1Int = [int(x) for x in list1]
 
-        index2 = parcellesLayer.fields().indexFromName("commune")
+        index2 = parcellesLayer.fields().indexFromName("COMMUNE")
         list2 = [i.attributes()[index2] for i in parcellesLayer.getFeatures()]
         list2Str = [str(y) for y in list2]
 
-        M = np.column_stack((list1Int, list2Str))
+        M = np.column_stack((list1Int, list2Str))  # creates table with lists as columns
 
         sorted_matrix = self.sort_matrix(M)
         result = self.search_parcelles(sorted_matrix, input)
@@ -329,6 +325,7 @@ class Jumelles:
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
 
     def search_communes(self, mat, target):
+        """this method searches the matches between input and attribute table for 'Communes'"""
         n = len(mat) - 1
         found = False
         for i in range(0, n):
@@ -340,16 +337,16 @@ class Jumelles:
 
     def communes(self, input):
         """'communes()' finds each 'commune' stored in the layer's attribute table"""
-        communesLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
+        communesLayer = QgsProject.instance().mapLayersByName("Parcelles")[0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(communesLayer)  # gets it active
 
-        index1 = communesLayer.fields().indexFromName("no_parcelle")
+        index1 = communesLayer.fields().indexFromName("NO_PARCELLE")
         list1 = [i.attributes()[index1] for i in communesLayer.getFeatures()]
-        list1Int = [int(x) for x in list1]
+        list1Int = [int(x) for x in list1]  # transforms values into integers
 
-        index2 = communesLayer.fields().indexFromName("commune")
+        index2 = communesLayer.fields().indexFromName("COMMUNE")
         list2 = [i.attributes()[index2] for i in communesLayer.getFeatures()]
-        list2Str = [str(y) for y in list2]
+        list2Str = [str(y) for y in list2]  # transforms values into strings
 
         M = np.column_stack((list2Str, list1Int))
 
@@ -359,9 +356,8 @@ class Jumelles:
         self.ui.listWidget_resultats.itemDoubleClicked.connect(
             self.zoom_p)
 
-        self.ui.lineEdit_commune.clear()
-
     def search_adresses(self, mat, target):
+        """this method searches the matches between input and attribute table for 'Adresses'"""
         n = len(mat)-1
         found = False
         for i in range(0, n):
@@ -374,7 +370,7 @@ class Jumelles:
     def adresses(self, input):
         """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        adressesLayer = QgsProject.instance().mapLayersByName("CAD_ADRESSE:CAD_ADRESSE")[0]  # select the good layer. In this case 'CAD_ADRESSE'
+        adressesLayer = QgsProject.instance().mapLayersByName("Adresses")[0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(adressesLayer)
 
         index1 = adressesLayer.fields().indexFromName("ADRESSE")
@@ -393,7 +389,10 @@ class Jumelles:
         self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
+        self.ui.lineEdit_adresse.clear()
+
     def search_parco(self, mat, target1, target2):
+        """this method searches the matches between input and attribute table for 'Parcelles' and 'Communes'"""
         n = len(mat) - 1
         found = False
         for i in range(0, n):
@@ -407,14 +406,14 @@ class Jumelles:
     def parComm(self, inputParc, inputComm):
         """'parComm()' finds each 'no_parcelle' and 'commune' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
-        parcoLayer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
+        parcoLayer = QgsProject.instance().mapLayersByName("Parcelles")[0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
         iface.setActiveLayer(parcoLayer)  # sets it active
 
-        index1 = parcoLayer.fields().indexFromName("no_parcelle")
+        index1 = parcoLayer.fields().indexFromName("NO_PARCELLE")
         list1 = [i.attributes()[index1] for i in parcoLayer.getFeatures()]
         list1Int = [int(x) for x in list1]
 
-        index2 = parcoLayer.fields().indexFromName("commune")
+        index2 = parcoLayer.fields().indexFromName("COMMUNE")
         list2 = [i.attributes()[index2] for i in parcoLayer.getFeatures()]
         list2Str = [str(y) for y in list2]
 
@@ -429,11 +428,11 @@ class Jumelles:
     def zoom_p(self, item):
         """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+        layer = QgsProject.instance().mapLayersByName("Parcelles")[
             0]  # selects the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item == f"{f['no_parcelle']} - {f['commune']}":
+            if selected_item == f"{f['NO_PARCELLE']} - {f['COMMUNE']}":
                 layer.removeSelection()
                 layer.select(f.id())
                 iface.mapCanvas().setExtent(f.geometry().boundingBox())
@@ -443,11 +442,11 @@ class Jumelles:
     def zoom_c(self, item):
         """Diplays the map according to selection in the parcelle() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("CAD_PARCELLE_MENSU")[
+        layer = QgsProject.instance().mapLayersByName("Parcelles")[
             0]  # select the good layer. In this case 'CAD_PARCELLE_MENSU'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item == f"{f['no_parcelle']} - {f['commune']}":
+            if selected_item == f"{f['NO_PARCELLE']} - {f['COMMUNE']}":
                 layer.removeSelection()
                 layer.select(f.id())
                 iface.mapCanvas().setExtent(f.geometry().boundingBox())
@@ -457,7 +456,7 @@ class Jumelles:
     def zoom_d(self, item):
         """Diplays the map according to selection in the dossiers() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("Dossiers — virtual_layer")[0]
+        layer = QgsProject.instance().mapLayersByName("Dossiers")[0]
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
             if selected_item == f"Mandat {f['Mandat']}":
@@ -474,10 +473,10 @@ class Jumelles:
     def zoom_o(self, item):
         """Diplays the map according to selection in the offres() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("offres")[0]
+        layer = QgsProject.instance().mapLayersByName("Offres")[0]
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item == f['Num_offre']:
+            if selected_item == f['num_offre']:
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -492,10 +491,10 @@ class Jumelles:
     def zoom_a(self, item):
         """Diplays the map according to selection in the adresse() method"""
         selected_item = item.text()
-        layer = QgsProject.instance().mapLayersByName("CAD_ADRESSE:CAD_ADRESSE")[0]  # select the good layer. In this case 'CAD_ADRESSE'
+        layer = QgsProject.instance().mapLayersByName("Adresses")[0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(layer)
         for f in layer.getFeatures():
-            if selected_item == f'{f["ADRESSE"]} {f["NO_POSTAL"]} {f["COMMUNE"]}':
+            if selected_item == f'{f["ADRESSE"]} - {f["NO_POSTAL"]} {f["COMMUNE"]}':
                 canvas = iface.mapCanvas()
                 x = f.geometry().asPoint().x()
                 y = f.geometry().asPoint().y()
@@ -508,8 +507,13 @@ class Jumelles:
                 break
 
     def clear_all(self):
-        """Clears the results list"""
+        """Clears all fields"""
         self.ui.listWidget_resultats.clear()
+        self.ui.lineEdit_offre.clear()
+        self.ui.lineEdit_dossier.clear()
+        self.ui.lineEdit_adresse.clear()
+        self.ui.lineEdit_parcelle.clear()
+        self.ui.lineEdit_commune.clear()
 
     def close(self):
         """Closes the window"""

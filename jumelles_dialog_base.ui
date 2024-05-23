@@ -7,8 +7,20 @@
     <x>0</x>
     <y>0</y>
     <width>654</width>
-    <height>725</height>
+    <height>751</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>654</width>
+    <height>751</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>654</width>
+    <height>751</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Jumelles</string>
@@ -36,7 +48,7 @@
       <x>28</x>
       <y>60</y>
       <width>251</width>
-      <height>25</height>
+      <height>51</height>
      </rect>
     </property>
     <property name="font">
@@ -52,7 +64,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>140</y>
+      <y>220</y>
       <width>251</width>
       <height>25</height>
      </rect>
@@ -63,16 +75,16 @@
      </font>
     </property>
     <property name="text">
-     <string>Arrêter</string>
+     <string>Fermer</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_nouvelleRecherche">
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>220</y>
+      <y>140</y>
       <width>251</width>
-      <height>51</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="font">
@@ -81,8 +93,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Nouvelle
-recherche</string>
+     <string>Effacer résultats</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_annuler">
@@ -146,6 +157,12 @@ recherche</string>
      <height>541</height>
     </rect>
    </property>
+   <property name="maximumSize">
+    <size>
+     <width>331</width>
+     <height>541</height>
+    </size>
+   </property>
    <property name="font">
     <font>
      <bold>true</bold>
@@ -159,7 +176,7 @@ recherche</string>
      <rect>
       <x>20</x>
       <y>60</y>
-      <width>41</width>
+      <width>151</width>
       <height>17</height>
      </rect>
     </property>
@@ -169,15 +186,15 @@ recherche</string>
      </font>
     </property>
     <property name="text">
-     <string>Offre</string>
+     <string>Offre (3 der. chiffres)</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_offre">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>170</x>
       <y>60</y>
-      <width>201</width>
+      <width>141</width>
       <height>25</height>
      </rect>
     </property>
@@ -192,7 +209,7 @@ recherche</string>
      <rect>
       <x>20</x>
       <y>140</y>
-      <width>51</width>
+      <width>121</width>
       <height>17</height>
      </rect>
     </property>
@@ -202,7 +219,7 @@ recherche</string>
      </font>
     </property>
     <property name="text">
-     <string>Dossier</string>
+     <string>Dossier/Mandat</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_adresse">
@@ -210,7 +227,7 @@ recherche</string>
      <rect>
       <x>20</x>
       <y>220</y>
-      <width>61</width>
+      <width>111</width>
       <height>17</height>
      </rect>
     </property>
@@ -220,7 +237,7 @@ recherche</string>
      </font>
     </property>
     <property name="text">
-     <string>Adresse</string>
+     <string>Adresse (Rue)</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_parcelle">
@@ -228,7 +245,7 @@ recherche</string>
      <rect>
       <x>20</x>
       <y>360</y>
-      <width>61</width>
+      <width>141</width>
       <height>17</height>
      </rect>
     </property>
@@ -238,7 +255,7 @@ recherche</string>
      </font>
     </property>
     <property name="text">
-     <string>Parcelle</string>
+     <string>Numéro de parcelle</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_commune">
@@ -246,7 +263,7 @@ recherche</string>
      <rect>
       <x>20</x>
       <y>440</y>
-      <width>71</width>
+      <width>141</width>
       <height>17</height>
      </rect>
     </property>
@@ -256,15 +273,15 @@ recherche</string>
      </font>
     </property>
     <property name="text">
-     <string>Commune</string>
+     <string>Nom de la commune</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_dossier">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>170</x>
       <y>140</y>
-      <width>201</width>
+      <width>141</width>
       <height>25</height>
      </rect>
     </property>
@@ -277,9 +294,9 @@ recherche</string>
    <widget class="QLineEdit" name="lineEdit_adresse">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>170</x>
       <y>220</y>
-      <width>201</width>
+      <width>141</width>
       <height>25</height>
      </rect>
     </property>
@@ -292,9 +309,9 @@ recherche</string>
    <widget class="QLineEdit" name="lineEdit_parcelle">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>170</x>
       <y>360</y>
-      <width>201</width>
+      <width>141</width>
       <height>25</height>
      </rect>
     </property>
@@ -307,9 +324,9 @@ recherche</string>
    <widget class="QLineEdit" name="lineEdit_commune">
     <property name="geometry">
      <rect>
-      <x>110</x>
+      <x>170</x>
       <y>440</y>
-      <width>201</width>
+      <width>141</width>
       <height>25</height>
      </rect>
     </property>
@@ -319,6 +336,24 @@ recherche</string>
      </font>
     </property>
    </widget>
+  </widget>
+  <widget class="QLabel" name="label_credits">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>730</y>
+     <width>141</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>7</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Développé par Antoine de Préville</string>
+   </property>
   </widget>
  </widget>
  <resources/>
