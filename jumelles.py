@@ -165,7 +165,7 @@ class Jumelles:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = '/home/antoine/.local/share/QGIS/QGIS3/profiles/default/python/plugins/jumelles/jumelles.png'
+        icon_path = os.path.dirname(__file__) + '/jumelles.png'
         self.add_action(
             icon_path,
             text=self.tr(u'Jumelles'),
