@@ -111,7 +111,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Annuler</string>
+     <string>Effacer champs</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_charger">

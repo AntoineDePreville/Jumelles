@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 import numpy as np
-import threading
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
@@ -30,7 +30,6 @@ from qgis._core import QgsPoint, QgsRectangle, QgsProject
 from qgis.utils import iface
 
 # Initialize Qt resources from file resources.py
-from .resources import *
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
 import os.path
@@ -38,7 +37,6 @@ import os.path
 
 class Jumelles:
     """QGIS Plugin Implementation."""
-
     def __init__(self, iface):
         """Constructor.
 
@@ -203,9 +201,7 @@ class Jumelles:
         if result:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
-
             # Call of all methods that perfom all the work + inputs from UI.
-
             inputOffres = self.ui.lineEdit_offre.text()
             inputDossiers = self.ui.lineEdit_dossier.text()
             inputParcelles = self.ui.lineEdit_parcelle.text()
@@ -225,11 +221,17 @@ class Jumelles:
             elif inputAdresses != "":
                 self.adresses(inputAdresses)
 
-            self.ui.pushButton_annuler.clicked.connect(self.clear_all)  # clears the results widget
-            self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_all)  # idem
+            self.ui.pushButton_annuler.clicked.connect(self.clear_fields)  # clears all fields
+            self.ui.pushButton_nouvelleRecherche.clicked.connect(self.clear_results)  # clears results
             self.ui.pushButton_arreter.clicked.connect(self.close)  # call the method close() to close the widget window
 
     def chargement(self):
+        progress = QProgressDialog("Chargement...", "Annuler", 0, 100)
+        progress.setWindowTitle("Chargement")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setValue(0)
+        progress.show()
+
         # Parcelles et communes
         parcellesLayer = QgsProject.instance().mapLayersByName("Parcelles")[0]
 
@@ -277,64 +279,57 @@ class Jumelles:
         n_adresses = len(M_adresses)
         n_dossiers = len(arr_dossiers)
         n_offres = len(arr_offres)
-        n_tot = n_parcelles+n_adresses+n_dossiers+n_offres
-        steps_tot = n_tot*(n_tot-1) // 2
-        progressDialog = QProgressDialog("Chargement...", "Annuler", 0, 100)
-        progressDialog.show()
-        progressCounter = [0]
 
-        def merge(arr, left, mid, right):
-            n1 = mid - left + 1
-            n2 = right - mid
-            L = arr[left:mid + 1]
-            R = arr[mid + 1:right + 1]
-            i = j = 0
-            k = left
-            while i < n1 and j < n2:
-                if progressDialog.wasCanceled():
-                    return
-                progressCounter[0] += 1
-                percentage = (progressCounter[0]/steps_tot)+100
-                progressDialog.setValue(int(percentage))
-                if L[i] <= R[j]:
+        def merge_sort_progress(arr, l, r, progress, total_steps):
+            def merge(arr, left, mid, right):
+                n1 = mid - left + 1
+                n2 = right - mid
+                L = arr[left:mid + 1]
+                R = arr[mid + 1:right + 1]
+                i = j = 0
+                k = left
+                while i < n1 and j < n2:
+                    if L[i] <= R[j]:
+                        arr[k] = L[i]
+                        i += 1
+                    else:
+                        arr[k] = R[j]
+                        j += 1
+                    k += 1
+                while i < n1:
                     arr[k] = L[i]
                     i += 1
-                else:
+                    k += 1
+                while j < n2:
                     arr[k] = R[j]
                     j += 1
-                k += 1
-            while i < n1:
-                if progressDialog.wasCanceled():
-                    return
-                progressCounter[0] += 1
-                percentage = (progressCounter[0]/steps_tot)+100
-                progressDialog.setValue(int(percentage))
-                arr[k] = L[i]
-                i += 1
-                k += 1
-            while j < n2:
-                if progressDialog.wasCanceled():
-                    return
-                progressCounter[0] += 1
-                percentage = (progressCounter[0] / steps_tot) + 100
-                progressDialog.setValue(int(percentage))
-                arr[k] = R[j]
-                j += 1
-                k += 1
+                    k += 1
 
-        def merge_sort(arr, l, r):
-            if l < r:
-                mid = (l + r) // 2
-                merge_sort(arr, l, mid)
-                merge_sort(arr, mid + 1, r)
-                merge(arr, l, mid, r)
+            def merge_sort(arr, l, r, progress, total_steps):
+                if l < r:
+                    mid = (l + r) // 2
+                    merge_sort(arr, l, mid, progress, total_steps)
+                    merge_sort(arr, mid + 1, r, progress, total_steps)
+                    merge(arr, l, mid, r)
+                    progress.setValue(progress.value() + 1)
+                    if progress.wasCanceled():
+                        return False
+                return True
+            return merge_sort(arr, l, r, progress, total_steps)
 
-        merge_sort(M_parcelles[:, 0].astype(int), 0, n_parcelles - 1)
-        merge_sort(M_adresses[:, 0].astype(str), 0, n_adresses - 1)
-        merge_sort(arr_dossiers.astype(int), 0, n_dossiers - 1)
-        merge_sort(arr_offres.astype(str), 0, n_offres - 1)
+        total_steps = n_parcelles + n_adresses + n_dossiers + n_offres
+        progress.setMaximum(total_steps)
 
-        progressDialog.close()
+        if not merge_sort_progress(M_parcelles[:, 0].astype(int), 0, n_parcelles - 1, progress, total_steps):
+            return
+        if not merge_sort_progress(M_adresses[:, 0].astype(str), 0, n_adresses - 1, progress, total_steps):
+            return
+        if not merge_sort_progress(arr_dossiers.astype(int), 0, n_dossiers - 1, progress, total_steps):
+            return
+        if not merge_sort_progress(arr_offres.astype(str), 0, n_offres - 1, progress, total_steps):
+            return
+
+        progress.close()
 
         if self.running_flag == 'dossiers':
             return arr_dossiers
@@ -374,8 +369,6 @@ class Jumelles:
             self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory
         # to display
 
-        self.ui.lineEdit_dossier.clear()
-
     def search_offres(self, arr, length, target):
         """this method searches the matches between input and attribute table for 'Offres'"""
         left = 0
@@ -399,12 +392,11 @@ class Jumelles:
         self.ui.listWidget_resultats.addItem(self.search_offres(arr, length, input))
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
 
-        self.ui.lineEdit_offre.clear()
-
     def search_parcelles(self, mat, target):
         """this method searches the matches between input and attribute table for 'Parcelles'"""
         n = len(mat)-1
         found = False
+        
         for i in range(0, n):
             if int(mat[i][0]) == int(target):
                 found = True
@@ -573,14 +565,16 @@ class Jumelles:
                 canvas.refresh()
                 break
 
-    def clear_all(self):
+    def clear_fields(self):
         """Clears all fields"""
-        self.ui.listWidget_resultats.clear()
         self.ui.lineEdit_offre.clear()
         self.ui.lineEdit_dossier.clear()
         self.ui.lineEdit_adresse.clear()
         self.ui.lineEdit_parcelle.clear()
         self.ui.lineEdit_commune.clear()
+
+    def clear_results(self):
+        self.ui.listWidget_resultats.clear()
 
     def close(self):
         """Closes the window"""
