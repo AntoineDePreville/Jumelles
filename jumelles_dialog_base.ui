@@ -64,7 +64,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>220</y>
+      <y>440</y>
       <width>251</width>
       <height>25</height>
      </rect>
@@ -82,7 +82,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>140</y>
+      <y>210</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -93,14 +93,14 @@
      </font>
     </property>
     <property name="text">
-     <string>Effacer résultats</string>
+     <string>Effacer les résultats</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_annuler">
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>360</y>
+      <y>140</y>
       <width>251</width>
       <height>25</height>
      </rect>
@@ -111,20 +111,20 @@
      </font>
     </property>
     <property name="text">
-     <string>Effacer champs</string>
+     <string>Effacer les champs</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_charger">
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>440</y>
+      <y>360</y>
       <width>251</width>
       <height>25</height>
      </rect>
     </property>
     <property name="text">
-     <string>Chargement</string>
+     <string>Pré-chargement</string>
     </property>
    </widget>
   </widget>

@@ -22,14 +22,13 @@
  ***************************************************************************/
 """
 import numpy as np
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import Qt
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
 from qgis._core import QgsPoint, QgsRectangle, QgsProject
 from qgis.utils import iface
 
-# Initialize Qt resources from file resources.py
 # Import the code for the dialog
 from .jumelles_dialog import JumellesDialog
 import os.path
@@ -265,14 +264,14 @@ class Jumelles:
         dossierLayer = QgsProject.instance().mapLayersByName("Dossiers")[0]
         index_dossiers = dossierLayer.fields().indexFromName("Mandat")
         list_dossiers = [i.attributes()[index_dossiers] for i in dossierLayer.getFeatures()]  # creates list
-        arr_dossiers = np.array(list_dossiers)
+        lstStrDossiers = [str(x) for x in list_dossiers]
+        arr_dossiers = np.array(lstStrDossiers)
 
         # Offres
         df = QgsProject.instance().mapLayersByName("Offres")[0]
         index_offres = df.fields().indexFromName("num_offre")
         list_offres = [i.attributes()[index_offres] for i in df.getFeatures()]  # creates list
         listStr = [str(x) for x in list_offres]
-
         arr_offres = np.array(listStr)
 
         n_parcelles = len(M_parcelles)
@@ -324,7 +323,7 @@ class Jumelles:
             return
         if not merge_sort_progress(M_adresses[:, 0].astype(str), 0, n_adresses - 1, progress, total_steps):
             return
-        if not merge_sort_progress(arr_dossiers.astype(int), 0, n_dossiers - 1, progress, total_steps):
+        if not merge_sort_progress(arr_dossiers.astype(str), 0, n_dossiers - 1, progress, total_steps):
             return
         if not merge_sort_progress(arr_offres.astype(str), 0, n_offres - 1, progress, total_steps):
             return
@@ -342,19 +341,30 @@ class Jumelles:
 
     def search_dossiers(self, arr, length, target):
         """this method searches the matches between input and attribute table for 'Dossiers'"""
-        l = 0
-        r = length - 1
+        """left = 0
+        right = length - 1
 
         # makes the research according to binary search algorithm
-        while l <= r:
-            mid = (r + l) // 2
-            if int(arr[mid]) < int(target):
-                l = mid + 1
-            elif int(arr[mid]) > int(target):
-                r = mid - 1
+        while left <= right:
+            mid = (right + left) // 2
+            if str(arr[mid]) < str(target):
+                left = mid + 1
+            elif str(arr[mid]) > str(target):
+                right = mid - 1
             else:
-                return self.ui.listWidget_resultats.addItem(f"Mandat {str(target)}")
+                return self.ui.listWidget_resultats.addItem(f"Mandat {str(arr[mid])}")
         return self.ui.listWidget_resultats.addItem(f"Erreur: le mandat n'existe pas.")
+"""
+
+        n = len(arr) - 1
+        found = False
+        for i in range(0, n):
+            if str(arr[i]) == (str(target)):
+                found = True
+                self.ui.listWidget_resultats.addItem(f"Mandat {str(arr[i])}")
+                break
+        if not found:
+            return self.ui.listWidget_resultats.addItem("Erreur: le mandat n'existe pas.")
 
     def dossiers(self, input):
         """'dossier()' finds each 'Mandat' stored in the layer's attribute table"""
@@ -364,7 +374,8 @@ class Jumelles:
         iface.setActiveLayer(dossierLayer)  # gets it active
         arr = self.chargement()
         length = len(arr)
-        self.ui.listWidget_resultats.addItem(self.search_dossiers(arr, length, input))
+        result = self.search_dossiers(arr, length, input)
+        self.ui.listWidget_resultats.addItem(result)
         self.ui.listWidget_resultats.itemDoubleClicked.connect(
             self.zoom_d)  # Accesses the zoom method that displays the corresponding map by choosing which directory
         # to display
@@ -387,16 +398,18 @@ class Jumelles:
         self.running_flag = 'offres'
         df = QgsProject.instance().mapLayersByName("Offres")[0]  # selects the good layer. In this case 'offres'
         iface.setActiveLayer(df)  # gets it active
-        arr = self.chargement()
-        length = len(arr)
-        self.ui.listWidget_resultats.addItem(self.search_offres(arr, length, input))
+
+        arr_offres = self.chargement()
+        length = len(arr_offres)
+        self.ui.listWidget_resultats.addItem(self.search_offres(arr_offres, length, input))
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_o)  # Accesses the zoom method that displays the corresponding map by choosing which directory to display
 
     def search_parcelles(self, mat, target):
         """this method searches the matches between input and attribute table for 'Parcelles'"""
-        n = len(mat)-1
+        """this method searches the matches between input and attribute table for 'Parcelles'"""
+        n = len(mat) - 1
         found = False
-        
+
         for i in range(0, n):
             if int(mat[i][0]) == int(target):
                 found = True
@@ -406,6 +419,7 @@ class Jumelles:
 
     def parcelles(self, input):
         """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
+        """'parcelles()' finds each 'no_parcelle' stored in the layer's attribute table"""
         self.ui.listWidget_resultats.clear()
         self.running_flag = 'parcelles'
         parcellesLayer = QgsProject.instance().mapLayersByName("Parcelles")[
@@ -414,7 +428,8 @@ class Jumelles:
 
         M = self.chargement()
         self.ui.listWidget_resultats.addItem(self.search_parcelles(M, input))
-        self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
+        self.ui.listWidget_resultats.itemDoubleClicked.connect(
+            self.zoom_p)  # Accesses the zoom method that displays the corresponding map by choosing which parcel to display
 
     def search_communes(self, mat, target):
         """this method searches the matches between input and attribute table for 'Communes'"""
@@ -456,9 +471,8 @@ class Jumelles:
         """'adresses()' finds each 'NO_ADRESSE' stored in the layer's attribute table"""
         adressesLayer = QgsProject.instance().mapLayersByName("Adresses")[0]  # select the good layer. In this case 'CAD_ADRESSE'
         iface.setActiveLayer(adressesLayer)
-
-        M = self.chargement()
-        self.ui.listWidget_resultats.addItem(self.search_adresses(M, input))
+        M_adresses = self.chargement()
+        self.ui.listWidget_resultats.addItem(self.search_adresses(M_adresses, input))
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_a)  # Accesses the zoom method that displays the corresponding map by choosing which address to display
 
     def search_parcomm(self, mat, target1, target2):
@@ -479,9 +493,8 @@ class Jumelles:
         self.running_flag = 'parcomm'
         parcoLayer = QgsProject.instance().mapLayersByName("Parcelles")[0]  # select the good layer. In this case 'CAD_ADRESSE:CAD_ADRESSE'
         iface.setActiveLayer(parcoLayer)  # sets it active
-
-        M = self.chargement()
-        self.ui.listWidget_resultats.addItem(self.search_parcomm(M, inputParc, inputComm))
+        M_parcomm = self.chargement()
+        self.ui.listWidget_resultats.addItem(self.search_parcomm(M_parcomm, inputParc, inputComm))
         self.ui.listWidget_resultats.itemDoubleClicked.connect(self.zoom_p)
 
     def zoom_p(self, item):
