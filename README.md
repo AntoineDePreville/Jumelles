@@ -12,19 +12,18 @@ It is a management tool.
 The plugin works on a single window with:
 * a research part on the left to search:
   * Offre
-  * Dossier
-  * Adresse
-  * Parcelle
-  * Commune
+  * Dossier/Mandat
+  * Adresse (Rue)
+  * Numéro de parcelle
+  * Nom de la commune
 * an action part on the right with four buttons:
   * Rechercher
-  * Effacer résultats
+  * Effacer les champs
+  * Effacer les résultats
+  * Pré-chargement
   * Fermer
-  * Annuler
 * a display field at the bottom that displays the code names of what we are looking for.
 A double click on a result in the display field shows the place on the map and zooms in.
 
 Here is a screenshot of the plugin:
 ![Jumelles](fenetre.png "icon")
-
-It is important to note that at the first research, the plugin takes time to charge data.
