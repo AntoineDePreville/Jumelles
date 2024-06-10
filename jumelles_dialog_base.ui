@@ -199,7 +199,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Offre (3 der. chiffres)</string>
+     <string>Offre</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_offre">
@@ -355,7 +355,7 @@
     <rect>
      <x>0</x>
      <y>730</y>
-     <width>141</width>
+     <width>181</width>
      <height>17</height>
     </rect>
    </property>
